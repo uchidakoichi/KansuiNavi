@@ -118,3 +118,15 @@ export function naisuiExtraFor(muni: string): NaisuiExtra | undefined {
   const [pref, rest = ""] = muni.split(" ");
   return NAISUI_EXTRA.find((x) => x.pref === pref && x.muni === rest);
 }
+
+/**
+ * 高潮浸水想定区域の統合版タイルが配信されている都道府県（2026-10-11 追加）。
+ * ★出典: ハザードマップポータルサイト opendata.html（都道府県別 URL の一覧。「18都道府県（26沿岸）を掲載」）。
+ *   「高潮浸水想定区域図を作成している段階の都道府県もある」。配信が増えたら作り直す
+ */
+export const HIGHTIDE_PREFS = [
+  "青森県", "千葉県", "東京都", "神奈川県", "静岡県", "愛知県", "三重県", "大阪府", "兵庫県",
+  "広島県", "山口県", "徳島県", "香川県", "福岡県", "佐賀県", "熊本県", "大分県", "宮崎県",
+];
+/** 海に面していない県（高潮の想定がそもそも無い） */
+export const LANDLOCKED_PREFS = ["栃木県", "群馬県", "埼玉県", "山梨県", "長野県", "岐阜県", "滋賀県", "奈良県"];

@@ -86,8 +86,27 @@
           <p class="note">★国が管理する河川は全国、都道府県が管理する河川は<b>掲載の許諾を得た河川だけ</b>です。
             ★<b>着色の無い場所でも、掲載されていない川の氾濫で浸水することがあります。</b></p>
         </div>
+        <label class="chk"><input id="hightide" type="checkbox" />高潮浸水想定区域</label>
+        <div id="hightide-info" hidden>
+          <p id="hightide-cov" class="note" role="status"></p>
+          <img class="hz-lg" src="legend/flood_l2.png" alt="高潮浸水想定区域の凡例（浸水深 0.3m未満〜20m以上）" width="154" height="154" />
+          <p class="note">★<b>配信は 18 都道府県だけです</b>（想定区域図を作成中の都道府県があります）。
+            <b>着色の無い場所でも浸水することがあります。</b></p>
+        </div>
+        <label class="chk"><input id="lsld" type="checkbox" />土砂災害警戒区域等</label>
+        <div id="lsld-info" hidden>
+          <div class="hz-lgs">
+            <figure><img class="hz-lg" src="legend/keikai_dosekiryu.png" alt="土石流の凡例" width="210" height="168" /><figcaption>土石流</figcaption></figure>
+            <figure><img class="hz-lg" src="legend/keikai_kyukeisya.png" alt="急傾斜地の崩壊の凡例" width="210" height="168" /><figcaption>急傾斜地の崩壊（がけ崩れ）</figcaption></figure>
+            <figure><img class="hz-lg" src="legend/keikai_jisuberi.png" alt="地すべりの凡例" width="210" height="168" /><figcaption>地すべり</figcaption></figure>
+          </div>
+          <p class="note">点線で囲まれた区域は、警戒区域・特別警戒区域に指定する予定の区域です。
+            ★<b>概略の位置を示す参考図で、区域の境界を示すものではありません。都道府県内のすべての区域を網羅してもいません。</b>
+            正確な情報は各都道府県（土木事務所など）に確かめてください。冠水とは別の災害なので、重ねて見るだけです。</p>
+        </div>
         <p class="note">出典: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>
-          （洪水: 国土交通省各地方整備局等・都道府県／内水: 市町村）。凡例も同サイトのもの。</p>
+          （洪水: 国土交通省各地方整備局等・都道府県／内水: 市町村／高潮: 都道府県／
+          土砂災害警戒区域等: 「国土数値情報 土砂災害警戒区域データ（令和7年度）」〈国土交通省〉をもとに国土地理院が加工）。凡例も同サイトのもの。</p>
       </div>
 
       <!-- F-09 ★利用者が押したときだけ新版へ交代する。勝手に切り替えない -->
@@ -172,7 +191,12 @@
           <li>浸水想定区域（重ねて表示したとき）: 出典：<a href="https://disaportal.gsi.go.jp/" target="_blank"
             rel="noopener">ハザードマップポータルサイト</a>（洪水浸水想定区域〈想定最大規模〉: 国土交通省各地方整備局等・都道府県／
             内水〈雨水出水〉浸水想定区域: 市町村）。地図の画像と凡例をそのまま重ねて表示しています。
-            藤沢市の内水浸水想定区域は「3D都市モデル（Project PLATEAU）藤沢市」（国土交通省）を加工して作成。</li>
+            藤沢市の内水浸水想定区域は「3D都市モデル（Project PLATEAU）藤沢市」（国土交通省）を加工して作成。
+            高潮浸水想定区域の原典は都道府県。<br>土砂災害警戒区域等: ハザードマップポータルサイト（「国土数値情報 土砂災害警戒区域データ（令和7年度）」〈国土交通省〉をもとに国土地理院が加工）。
+            原典は各都道府県で、都道府県ごとの利用条件に従います（例: 京都府は商用利用不可）。
+            鳥取県分は 鳥取県オープンデータポータルサイト（土砂災害警戒区域等データ）、鳥取県（CC BY 2.1 JP）、
+            広島県分は 土砂災害ポータルひろしま・広島県 DoboX（CC BY）、
+            長崎県分は 長崎県オープンデータカタログサイト（土砂災害警戒区域等）、長崎県（CC BY 4.0）のデータを国土数値情報が加工したものです。</li>
           <li>住所検索の都道府県名・市区町村名: 「国土数値情報（行政区域データ）」（国土交通省）を加工して作成
             （<a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">国土数値情報ダウンロードサイト</a>）。</li>
           <li class="nk09" hidden>冠水想定箇所: 出典：国土交通省 東北・北陸・中部・近畿・中国・四国・九州地方整備局、内閣府 沖縄総合事務局
@@ -204,7 +228,7 @@
           経路に必要な道路データの範囲</b>が各事業者に届きます。運営者はこれらの記録を取得していません。
           各事業者での取扱いは、それぞれの方針によります。</p>
         <ul class="note">
-          <li>国土地理院（地図の画像の取得。浸水想定区域を重ねたときは、ハザードマップポータルサイトの地図の画像も取得します）: <a href="https://www.gsi.go.jp/GSI/puraibasi-porisi.htm"
+          <li>国土地理院（地図の画像の取得。浸水想定区域・土砂災害警戒区域等を重ねたときは、ハザードマップポータルサイトの地図の画像も取得します）: <a href="https://www.gsi.go.jp/GSI/puraibasi-porisi.htm"
             target="_blank" rel="noopener">国土地理院 プライバシーポリシー</a></li>
           <li>Cloudflare, Inc.（本アプリと道路データの配信）: <a href="https://www.cloudflare.com/privacypolicy/"
             target="_blank" rel="noopener">Cloudflare's Privacy Policy</a></li>
@@ -212,7 +236,7 @@
         <p><b>5. 改定</b><br />必要に応じて改定し、本アプリ内に掲示します。外部へ情報を送る機能を追加するときは、その前に改定します。</p>
         <p><b>6. お問い合わせ</b><br />X（旧 Twitter）のダイレクトメッセージ:
           <a href="https://x.com/uchidakoichi" target="_blank" rel="noopener">@uchidakoichi</a></p>
-        <p class="note">制定日: 2026年10月7日 ／ 改定日: 2026年10月11日（浸水想定区域の重ね表示を追加）</p>
+        <p class="note">制定日: 2026年10月7日 ／ 改定日: 2026年10月11日（浸水想定区域・土砂災害警戒区域等の重ね表示を追加）</p>
       </details>
     </aside>
 

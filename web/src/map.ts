@@ -49,6 +49,9 @@ export const ROAD_KANSUI_ATTRIB =
  * ★**経路の計算には使わない**（`hazard.w2_hazard: 0.0`。藤沢版の決定を継承）。重ねて見るだけ。
  * ★データの無いタイルは 404 が返る（2026-10-11 実測）。→ 下の `onError` から外す（画面にエラーを出さない）
  */
+const LSLD_ATTRIB =
+  '土砂災害警戒区域等: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>' +
+  "（「国土数値情報 土砂災害警戒区域データ」〈国土交通省〉をもとに国土地理院が加工。原典: 各都道府県）";
 export const HAZARD_LAYERS = {
   flood_l2: {
     url: "https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png",
@@ -60,6 +63,17 @@ export const HAZARD_LAYERS = {
     attribution:
       '内水浸水想定区域: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>（市町村）',
   },
+  // ★高潮は 18 都道府県だけ（opendata.html。作成中の都道府県がある）→ hazard-coverage.ts の HIGHTIDE_PREFS
+  hightide: {
+    url: "https://disaportaldata.gsi.go.jp/raster/03_hightide_l2_shinsuishin_data/{z}/{x}/{y}.png",
+    attribution:
+      '高潮浸水想定区域: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>（都道府県）',
+  },
+  // ★土砂災害警戒区域等は現象ごとに3枚（全国・2026-08-06 から）。「国土数値情報 土砂災害警戒区域（令和7年度）」を国土地理院が加工。
+  //   ★原典の都道府県ごとの条件あり（KsjTmplt-A33-2025 の A33_permision_R7.xlsx）: 京都府は商用利用不可、鳥取・広島は概略位置 ほか
+  lsld_dosekiryu: { url: "https://disaportaldata.gsi.go.jp/raster/05_dosekiryukeikaikuiki/{z}/{x}/{y}.png", attribution: LSLD_ATTRIB },
+  lsld_kyukeisha: { url: "https://disaportaldata.gsi.go.jp/raster/05_kyukeishakeikaikuiki/{z}/{x}/{y}.png", attribution: LSLD_ATTRIB },
+  lsld_jisuberi: { url: "https://disaportaldata.gsi.go.jp/raster/05_jisuberikeikaikuiki/{z}/{x}/{y}.png", attribution: LSLD_ATTRIB },
 } as const;
 export type HazardKey = keyof typeof HAZARD_LAYERS;
 

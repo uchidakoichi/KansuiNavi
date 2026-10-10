@@ -19,7 +19,15 @@
 import { loadRoadKansui } from "./roadkansui";
 import { DATA_BASE, dataUrl } from "./data-base";
 import { createMap, STATE, type HazardKey, type MapHandles } from "./map";
-import { NAISUI_EXTRA, NAISUI_MUNIS, NAISUI_SOURCE_DATE, naisuiCovered, naisuiExtraFor } from "./hazard-coverage";
+import {
+  HIGHTIDE_PREFS,
+  LANDLOCKED_PREFS,
+  NAISUI_EXTRA,
+  NAISUI_MUNIS,
+  NAISUI_SOURCE_DATE,
+  naisuiCovered,
+  naisuiExtraFor,
+} from "./hazard-coverage";
 import { registerServiceWorker } from "./sw-register";
 import { buildCoverage, type Coverage } from "./coverage";
 import { meshBbox } from "./mesh";
@@ -222,68 +230,89 @@ function wireControls() {
 function wireHazards() {
   $("naisui-n").textContent = `${NAISUI_MUNIS.length} 市町村・${NAISUI_SOURCE_DATE}時点`;
   const cov = $("naisui-cov");
+  const tcov = $("hightide-cov");
   let places: Awaited<ReturnType<typeof loadPlaces>> | null = null;
+  const on = (id: string) => $<HTMLInputElement>(id).checked;
   // ★ポータルに無い市区町村の面（藤沢市）。地図がその範囲に掛かったときだけ読む・出す
   const showExtras = () => {
-    const on = $<HTMLInputElement>("naisui").checked;
     const b = handles.map.getBounds();
     for (const x of NAISUI_EXTRA) {
-      const hit = on && b.getWest() < x.bbox[2] && b.getEast() > x.bbox[0] && b.getSouth() < x.bbox[3] && b.getNorth() > x.bbox[1];
+      const hit = on("naisui") && b.getWest() < x.bbox[2] && b.getEast() > x.bbox[0] && b.getSouth() < x.bbox[3] && b.getNorth() > x.bbox[1];
       handles.setPolygonOverlay(`naisui-x-${x.muni}`, dataUrl(x.file), x.attribution, hit);
     }
   };
+  /** 地図の中心の市区町村（分からなければ null）。★配信の有無を出すときにだけ使う */
+  const centerMuni = (): string | null | undefined => {
+    if (!places) return undefined; // まだ読み込み中
+    const c = handles.map.getCenter();
+    return places.nearestMuni(c.lng, c.lat, 5);
+  };
+  const say = (el: HTMLElement, text: string, bad = false) => {
+    el.textContent = text;
+    el.classList.toggle("bad", bad);
+  };
   const showCoverage = () => {
-    const el = $<HTMLInputElement>("naisui");
     showExtras();
     $("naisui-extra").hidden = true;
-    if (!el.checked) return;
-    cov.classList.remove("bad");
-    if (handles.map.getZoom() < 10) {
-      cov.textContent = "地図を拡大すると、地図の中心の市区町村に内水浸水想定区域が配信されているかを表示します。";
-      return;
+    if (!on("naisui") && !on("hightide")) return;
+    const wide = handles.map.getZoom() < 10;
+    const muni = wide ? null : centerMuni();
+    if (on("naisui")) {
+      if (wide) say(cov, "地図を拡大すると、地図の中心の市区町村に内水浸水想定区域が配信されているかを表示します。");
+      else if (muni === undefined) say(cov, "市区町村を調べています…");
+      else if (!muni) say(cov, "地図の中心の市区町村が分かりません（近くに地名のデータがありません）。");
+      else if (naisuiCovered(muni)) say(cov, `地図の中心（${muni}）の内水浸水想定区域を表示しています。`);
+      else if (naisuiExtraFor(muni)) {
+        const x = naisuiExtraFor(muni)!;
+        say(cov,
+          `地図の中心（${muni}）の内水浸水想定区域を表示しています（ハザードマップポータルには無いため、` +
+            `${x.muni}の区域図から作った面です。色分けは下の「${x.muni}」の凡例）。`);
+        $("naisui-extra-src").textContent = `出典: ${x.source}`;
+        $("naisui-extra").hidden = false;
+      } else
+        say(cov,
+          `地図の中心（${muni}）の内水浸水想定区域は配信されていません。` +
+            "着色が無くても浸水しないという意味ではありません。市区町村のハザードマップを確認してください。", true);
     }
-    if (!places) {
-      cov.textContent = "市区町村を調べています…";
-      return;
-    }
-    const c = handles.map.getCenter();
-    const muni = places.nearestMuni(c.lng, c.lat, 5);
-    if (!muni) {
-      cov.textContent = "地図の中心の市区町村が分かりません（近くに地名のデータがありません）。";
-    } else if (naisuiCovered(muni)) {
-      cov.textContent = `地図の中心（${muni}）の内水浸水想定区域を表示しています。`;
-    } else if (naisuiExtraFor(muni)) {
-      const x = naisuiExtraFor(muni)!;
-      cov.textContent =
-        `地図の中心（${muni}）の内水浸水想定区域を表示しています（ハザードマップポータルには無いため、` +
-        `${x.muni}の区域図から作った面です。色分けは下の「${x.muni}」の凡例）。`;
-      $("naisui-extra-src").textContent = `出典: ${x.source}`;
-      $("naisui-extra").hidden = false;
-    } else {
-      cov.classList.add("bad");
-      cov.textContent =
-        `地図の中心（${muni}）の内水浸水想定区域は配信されていません。` +
-        "着色が無くても浸水しないという意味ではありません。市区町村のハザードマップを確認してください。";
+    if (on("hightide")) {
+      const pref = muni ? muni.split(" ")[0] : null;
+      if (wide) say(tcov, "地図を拡大すると、地図の中心の都道府県に高潮浸水想定区域が配信されているかを表示します。");
+      else if (muni === undefined) say(tcov, "都道府県を調べています…");
+      else if (!pref) say(tcov, "地図の中心の都道府県が分かりません（近くに地名のデータがありません）。");
+      else if (HIGHTIDE_PREFS.includes(pref)) say(tcov, `地図の中心（${pref}）の高潮浸水想定区域を表示しています。`);
+      else if (LANDLOCKED_PREFS.includes(pref)) say(tcov, `地図の中心（${pref}）は海に面していないため、高潮浸水想定区域はありません。`);
+      else
+        say(tcov,
+          `地図の中心（${pref}）の高潮浸水想定区域は配信されていません（作成中の場合があります）。` +
+            "着色が無くても浸水しないという意味ではありません。都道府県・市区町村のハザードマップを確認してください。", true);
     }
   };
   handles.map.on("moveend", showCoverage);
-  for (const key of ["naisui", "flood_l2"] as HazardKey[]) {
-    const el = $<HTMLInputElement>(key);
+  // ★チェック欄 → 重ねるレイヤ。土砂災害警戒区域等は現象ごとの3枚を一緒に出す
+  const groups: Record<string, HazardKey[]> = {
+    naisui: ["naisui"],
+    flood_l2: ["flood_l2"],
+    hightide: ["hightide"],
+    lsld: ["lsld_dosekiryu", "lsld_kyukeisha", "lsld_jisuberi"],
+  };
+  for (const [id, keys] of Object.entries(groups)) {
+    const el = $<HTMLInputElement>(id);
     el.addEventListener("change", () => {
-      handles.setHazard(key, el.checked);
-      $(`${key}-info`).hidden = !el.checked;
-      if (key === "naisui") showExtras(); // ★消すときも面を消す
-      if (key !== "naisui" || !el.checked) return;
-      showCoverage();
-      if (!places)
-        loadPlaces(dataUrl("places.json"))
-          .then((idx) => {
-            places = idx;
-            showCoverage();
-          })
-          .catch(() => {
-            cov.textContent = "市区町村を調べるためのデータを読み込めませんでした。通信の状態を確かめてください。";
-          });
+      for (const k of keys) handles.setHazard(k, el.checked);
+      $(`${id}-info`).hidden = !el.checked;
+      showCoverage(); // ★消すときも藤沢市の面を消す
+      // ★配信の有無を出すレイヤだけ、市区町村を引くための地名データを読む
+      if (!el.checked || (id !== "naisui" && id !== "hightide") || places) return;
+      loadPlaces(dataUrl("places.json"))
+        .then((idx) => {
+          places = idx;
+          showCoverage();
+        })
+        .catch(() => {
+          const msg = "市区町村を調べるためのデータを読み込めませんでした。通信の状態を確かめてください。";
+          say(cov, msg, true);
+          say(tcov, msg, true);
+        });
     });
   }
 }

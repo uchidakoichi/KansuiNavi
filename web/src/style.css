@@ -151,5 +151,9 @@ h1 { font-size: 1.1rem; margin: 0 0 4px; }
 .hz-h { margin: 14px 0 4px; font-weight: 600; }
 .hz-h .note { font-weight: normal; margin-left: 6px; }
 .hz-lg { display: block; max-width: 160px; height: auto; margin: 6px 0; background: #fff; }
-#naisui-cov.bad { color: var(--alert); font-weight: 600; }
+#naisui-cov.bad, #hightide-cov.bad { color: var(--alert); font-weight: 600; }
 .lg-sw { display: inline-block; width: 12px; height: 12px; margin: 0 3px 0 8px; vertical-align: -1px; border: 1px solid #0002; }
+.hz-lgs { display: flex; flex-wrap: wrap; gap: 6px; }
+.hz-lgs figure { margin: 0; }
+.hz-lgs .hz-lg { max-width: 110px; margin: 4px 0 0; }
+.hz-lgs figcaption { font-size: .72rem; color: var(--muted); }
