@@ -16,7 +16,7 @@ from shapely.geometry import LineString, box
 from kansui.gsi_vector import ROAD_LAYER, VectorTiles, decode_layer
 
 Z = 16  # 最大ズーム。★低ズームを取っても詳細は上がらない
-UA = "kansui-national-poc/0.1 (flood-risk routing PoC; +https://github.com/uchidakoichi/kansui-national)"
+UA = "kansui-national-poc/0.1 (flood-risk routing PoC; +https://github.com/uchidakoichi/KansuiNavi)"
 FUJISAWA = Path(__file__).resolve().parents[3] / "Kansui/preprocess/data/raw"  # 藤沢版のリポジトリを隣に置いた前提
 OUT = Path("data/raw/gsi_rdcl_fujisawa.parquet")
 

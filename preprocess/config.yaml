@@ -618,7 +618,7 @@ tiles:
   #   プロセス（連鎖の次の地域・やり直し）も減速した間隔で始める。印を消せば 0秒に戻る
   throttle_memory_sec: 86400
   max_concurrency: 1             # 同時接続1
-  user_agent: "kansui-national-poc/0.1 (nationwide flood-risk routing PoC; +https://github.com/uchidakoichi/kansui-national)"
+  user_agent: "kansui-national-poc/0.1 (nationwide flood-risk routing PoC; +https://github.com/uchidakoichi/KansuiNavi)"
   cache_dir: data/cache/xyz      # ★同じタイルを二度取らない
   timeout_sec: 60
   max_retries: 3
