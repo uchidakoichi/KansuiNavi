@@ -31,7 +31,6 @@ def test_require_fails_on_unconfirmed_values(cfg):
         "dem.coverage_dem5a",         # NK-07
         "boundary.url",               # 全国版の URL が未確定
         "width.absolute_threshold_m",  # ★区分では答えられない
-        "hazard.nationwide_layer",    # NK-14
     ):
         with pytest.raises(ConfigError):
             cfg.require(dotted)
@@ -47,6 +46,8 @@ def test_decided_values_are_present(cfg):
     assert cfg.require("gsi_vector.zoom") == 16
     assert cfg.require("routing.lambda_default") == 8.0
     assert cfg.require("routing.calibrated_depth_m") == 1.407
+    # ★2026-10-11: 全国統合版タイルを重ね表示に使う（NK-14）
+    assert cfg.require("hazard.nationwide_layer") == "01_flood_l2_shinsuishin_data"
 
 
 # -----------------------------------------------------------------------------
