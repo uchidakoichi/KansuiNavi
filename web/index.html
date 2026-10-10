@@ -67,6 +67,16 @@
         <div id="naisui-info" hidden>
           <p id="naisui-cov" class="note" role="status"></p>
           <img class="hz-lg" src="legend/naisui.png" alt="内水浸水想定区域の凡例（浸水深 0.1m〜20m以上）" width="200" height="223" />
+          <!-- ★ポータルに無く、手元の面で出している市区町村（藤沢市）。色分けがポータルと違うので別の凡例 -->
+          <div id="naisui-extra" hidden>
+            <p class="note"><b>藤沢市</b>（この市だけ色分けが違います）:
+              <span class="lg-sw" style="background:#F5F37A"></span>0.3〜0.5m
+              <span class="lg-sw" style="background:#FEDDBE"></span>0.5〜1m
+              <span class="lg-sw" style="background:#FEBEBF"></span>1〜3m
+              <span class="lg-sw" style="background:#F57B7A"></span>3〜5m
+              <span class="lg-sw" style="background:#E272FF"></span>5〜10m</p>
+            <p id="naisui-extra-src" class="note"></p>
+          </div>
           <p class="note">★<b>配信は全国の一部の市町村だけです</b>（オープンデータ化を許可した市町村。<span id="naisui-n"></span>）。
             浸水深 0.1m 未満は表示されません。<b>着色の無い場所でも浸水することがあります。</b></p>
         </div>
@@ -161,7 +171,8 @@
             rel="noopener">OpenStreetMap</a> contributors（ODbL）。</li>
           <li>浸水想定区域（重ねて表示したとき）: 出典：<a href="https://disaportal.gsi.go.jp/" target="_blank"
             rel="noopener">ハザードマップポータルサイト</a>（洪水浸水想定区域〈想定最大規模〉: 国土交通省各地方整備局等・都道府県／
-            内水〈雨水出水〉浸水想定区域: 市町村）。地図の画像と凡例をそのまま重ねて表示しています。</li>
+            内水〈雨水出水〉浸水想定区域: 市町村）。地図の画像と凡例をそのまま重ねて表示しています。
+            藤沢市の内水浸水想定区域は「3D都市モデル（Project PLATEAU）藤沢市」（国土交通省）を加工して作成。</li>
           <li>住所検索の都道府県名・市区町村名: 「国土数値情報（行政区域データ）」（国土交通省）を加工して作成
             （<a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">国土数値情報ダウンロードサイト</a>）。</li>
           <li class="nk09" hidden>冠水想定箇所: 出典：国土交通省 東北・北陸・中部・近畿・中国・四国・九州地方整備局、内閣府 沖縄総合事務局

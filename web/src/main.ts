@@ -19,7 +19,7 @@
 import { loadRoadKansui } from "./roadkansui";
 import { DATA_BASE, dataUrl } from "./data-base";
 import { createMap, STATE, type HazardKey, type MapHandles } from "./map";
-import { NAISUI_MUNIS, NAISUI_SOURCE_DATE, naisuiCovered } from "./hazard-coverage";
+import { NAISUI_EXTRA, NAISUI_MUNIS, NAISUI_SOURCE_DATE, naisuiCovered, naisuiExtraFor } from "./hazard-coverage";
 import { registerServiceWorker } from "./sw-register";
 import { buildCoverage, type Coverage } from "./coverage";
 import { meshBbox } from "./mesh";
@@ -223,8 +223,19 @@ function wireHazards() {
   $("naisui-n").textContent = `${NAISUI_MUNIS.length} 市町村・${NAISUI_SOURCE_DATE}時点`;
   const cov = $("naisui-cov");
   let places: Awaited<ReturnType<typeof loadPlaces>> | null = null;
+  // ★ポータルに無い市区町村の面（藤沢市）。地図がその範囲に掛かったときだけ読む・出す
+  const showExtras = () => {
+    const on = $<HTMLInputElement>("naisui").checked;
+    const b = handles.map.getBounds();
+    for (const x of NAISUI_EXTRA) {
+      const hit = on && b.getWest() < x.bbox[2] && b.getEast() > x.bbox[0] && b.getSouth() < x.bbox[3] && b.getNorth() > x.bbox[1];
+      handles.setPolygonOverlay(`naisui-x-${x.muni}`, dataUrl(x.file), x.attribution, hit);
+    }
+  };
   const showCoverage = () => {
     const el = $<HTMLInputElement>("naisui");
+    showExtras();
+    $("naisui-extra").hidden = true;
     if (!el.checked) return;
     cov.classList.remove("bad");
     if (handles.map.getZoom() < 10) {
@@ -241,6 +252,13 @@ function wireHazards() {
       cov.textContent = "地図の中心の市区町村が分かりません（近くに地名のデータがありません）。";
     } else if (naisuiCovered(muni)) {
       cov.textContent = `地図の中心（${muni}）の内水浸水想定区域を表示しています。`;
+    } else if (naisuiExtraFor(muni)) {
+      const x = naisuiExtraFor(muni)!;
+      cov.textContent =
+        `地図の中心（${muni}）の内水浸水想定区域を表示しています（ハザードマップポータルには無いため、` +
+        `${x.muni}の区域図から作った面です。色分けは下の「${x.muni}」の凡例）。`;
+      $("naisui-extra-src").textContent = `出典: ${x.source}`;
+      $("naisui-extra").hidden = false;
     } else {
       cov.classList.add("bad");
       cov.textContent =
@@ -254,6 +272,7 @@ function wireHazards() {
     el.addEventListener("change", () => {
       handles.setHazard(key, el.checked);
       $(`${key}-info`).hidden = !el.checked;
+      if (key === "naisui") showExtras(); // ★消すときも面を消す
       if (key !== "naisui" || !el.checked) return;
       showCoverage();
       if (!places)

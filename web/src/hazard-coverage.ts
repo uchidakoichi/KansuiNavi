@@ -86,3 +86,35 @@ export function naisuiCovered(muni: string): boolean {
     ([p, m]) => p === pref && (rest === m || (m.endsWith("市") && rest.startsWith(m) && rest.endsWith("区"))),
   );
 }
+
+/**
+ * ★ポータルに無いが、手元に面のある市区町村（2026-10-11・利用者の指摘「藤沢版で出ていた内水が出ない」）。
+ *   藤沢市は PLATEAU の「藤沢市雨水出水浸水想定区域図」から藤沢版が作った面（preprocess/tools/copy_fujisawa_naisui.py）。
+ *   ★ポータルとは**色分けが違う**（藤沢版の帯）ので、凡例を別に出す。
+ */
+export interface NaisuiExtra {
+  pref: string;
+  muni: string;
+  /** 配布データの中のファイル名 */
+  file: string;
+  /** 範囲 [西, 南, 東, 北]。地図がここに掛かったときだけ読む */
+  bbox: [number, number, number, number];
+  attribution: string;
+  source: string;
+}
+export const NAISUI_EXTRA: NaisuiExtra[] = [
+  {
+    pref: "神奈川県",
+    muni: "藤沢市",
+    file: "naisui_fujisawa.json",
+    bbox: [139.3963, 35.2983, 139.5162, 35.4288],
+    attribution: "内水浸水想定区域（藤沢市）: 3D都市モデル（Project PLATEAU）藤沢市（国土交通省）を加工して作成",
+    source: "藤沢市 雨水出水浸水想定区域図（藤沢市告示第47号・想定最大規模 1時間153mm）。3D都市モデル（Project PLATEAU）藤沢市（国土交通省）を加工して作成",
+  },
+];
+
+/** その市区町村が、手元の面で出せる市区町村か */
+export function naisuiExtraFor(muni: string): NaisuiExtra | undefined {
+  const [pref, rest = ""] = muni.split(" ");
+  return NAISUI_EXTRA.find((x) => x.pref === pref && x.muni === rest);
+}

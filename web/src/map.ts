@@ -263,6 +263,11 @@ export interface MapHandles {
   focusSegment(lines: [number, number][][] | null): void;
   /** 浸水想定区域の重ね表示を出す・消す */
   setHazard(key: HazardKey, on: boolean): void;
+  /**
+   * 面で持っている浸水想定区域（ポータルに無い市区町村。例: 藤沢市の内水）を出す・消す。
+   * ★初めて出すときに `url` を読む（使わない人には通信させない）。色は面の `color` 属性
+   */
+  setPolygonOverlay(id: string, url: string, attribution: string, on: boolean): void;
   fit(bbox: [number, number, number, number]): void;
 }
 
@@ -304,6 +309,19 @@ export function createMap(
     setOverlay: (fc) => src("overlay")?.setData(fc),
     setCoverage: (fc) => src("coverage")?.setData(fc),
     setHazard: (key, on) => map.setLayoutProperty(key, "visibility", on ? "visible" : "none"),
+    setPolygonOverlay: (id, url, attribution, on) => {
+      if (!map.getSource(id)) {
+        if (!on) return;
+        map.addSource(id, { type: "geojson", data: url, attribution });
+        // ★道路の線より下（「coverage」の前）に置く。ポータルのタイルと同じ不透明度
+        map.addLayer(
+          { id, type: "fill", source: id, paint: { "fill-color": ["get", "color"], "fill-opacity": 0.6 } },
+          "coverage",
+        );
+        return;
+      }
+      map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
+    },
     setEnds: (fc) => src("ends")?.setData(fc),
     focusSegment: (lines) => {
       src("focus")?.setData(
