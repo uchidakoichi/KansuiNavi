@@ -18,7 +18,8 @@
 
 import { loadRoadKansui } from "./roadkansui";
 import { DATA_BASE, dataUrl } from "./data-base";
-import { createMap, STATE, type MapHandles } from "./map";
+import { createMap, STATE, type HazardKey, type MapHandles } from "./map";
+import { NAISUI_MUNIS, NAISUI_SOURCE_DATE, naisuiCovered } from "./hazard-coverage";
 import { registerServiceWorker } from "./sw-register";
 import { buildCoverage, type Coverage } from "./coverage";
 import { meshBbox } from "./mesh";
@@ -127,6 +128,7 @@ async function boot() {
   worker.postMessage({ type: "init", index, base: DATA_BASE });
 
   wireControls();
+  wireHazards();
   wireLocate();
   wireSearch();
   // ★NK-09: 道路冠水注意箇所（データを配っているときだけ。同意画面の文言は boot の先頭で出している）
@@ -210,6 +212,61 @@ function wireControls() {
     $("status").textContent = "地図を2回タップして、出発地と目的地を選びます。";
   });
   showParams();
+}
+
+/**
+ * 浸水想定区域の重ね表示（2026-10-11）。★経路の計算には使わない。
+ * ★内水は配信が一部の市町村だけ。**地図の中心の市区町村が配信対象かを出す**（空白を「安全」と読ませない。利用者の要望）。
+ *   市区町村は places.json の最寄りの地名から引く（面は持っていないので、境の近くでは隣を返すことがある）。
+ */
+function wireHazards() {
+  $("naisui-n").textContent = `${NAISUI_MUNIS.length} 市町村・${NAISUI_SOURCE_DATE}時点`;
+  const cov = $("naisui-cov");
+  let places: Awaited<ReturnType<typeof loadPlaces>> | null = null;
+  const showCoverage = () => {
+    const el = $<HTMLInputElement>("naisui");
+    if (!el.checked) return;
+    cov.classList.remove("bad");
+    if (handles.map.getZoom() < 10) {
+      cov.textContent = "地図を拡大すると、地図の中心の市区町村に内水浸水想定区域が配信されているかを表示します。";
+      return;
+    }
+    if (!places) {
+      cov.textContent = "市区町村を調べています…";
+      return;
+    }
+    const c = handles.map.getCenter();
+    const muni = places.nearestMuni(c.lng, c.lat, 5);
+    if (!muni) {
+      cov.textContent = "地図の中心の市区町村が分かりません（近くに地名のデータがありません）。";
+    } else if (naisuiCovered(muni)) {
+      cov.textContent = `地図の中心（${muni}）の内水浸水想定区域を表示しています。`;
+    } else {
+      cov.classList.add("bad");
+      cov.textContent =
+        `地図の中心（${muni}）の内水浸水想定区域は配信されていません。` +
+        "着色が無くても浸水しないという意味ではありません。市区町村のハザードマップを確認してください。";
+    }
+  };
+  handles.map.on("moveend", showCoverage);
+  for (const key of ["naisui", "flood_l2"] as HazardKey[]) {
+    const el = $<HTMLInputElement>(key);
+    el.addEventListener("change", () => {
+      handles.setHazard(key, el.checked);
+      $(`${key}-info`).hidden = !el.checked;
+      if (key !== "naisui" || !el.checked) return;
+      showCoverage();
+      if (!places)
+        loadPlaces(dataUrl("places.json"))
+          .then((idx) => {
+            places = idx;
+            showCoverage();
+          })
+          .catch(() => {
+            cov.textContent = "市区町村を調べるためのデータを読み込めませんでした。通信の状態を確かめてください。";
+          });
+    });
+  }
 }
 
 function params() {

@@ -1030,8 +1030,10 @@ routing:
 # -----------------------------------------------------------------------------
 hazard:
   layers: ["flood_l2", "hightide"] # ★内水は一部市町村のみ（T-03）。地域ごとに判定
-  # ★TODO: 全国合成レイヤの有無と凡例（NK-14）。都道府県別のまま使う
-  nationwide_layer: null
+  # ★2026-10-11: アプリの重ね表示は全国統合版タイルを直接読む（web/src/map.ts の HAZARD_LAYERS）。
+  #   洪水（想定最大規模）01_flood_l2_shinsuishin_data・内水 02_naisui_data（配信は 65 市町村だけ → web/src/hazard-coverage.ts）。
+  #   凡例はポータルの画像をそのまま同梱（web/public/legend/）。★経路の計算には使わない
+  nationwide_layer: 01_flood_l2_shinsuishin_data
   # ★T-06: 凡例 LUT はレイヤごとに分離する。共通化すると必ず事故る
   # ★T-02: 無着色＝安全ではない。内水は 0〜0.1m を描画しない
 

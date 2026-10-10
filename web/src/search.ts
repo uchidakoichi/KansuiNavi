@@ -62,6 +62,27 @@ export class PlaceIndex {
   }
 
   /**
+   * その地点に最も近い地名の市区町村（「都道府県 市区町村」）。`maxKm` より遠ければ null。
+   * ★行政区域の面は持っていないので、**境の近くでは隣の市区町村を返すことがある**（内水の配信対象の目安に使う）。
+   */
+  nearestMuni(lon: number, lat: number, maxKm: number): string | null {
+    const d = this.d;
+    const k = Math.cos((lat * Math.PI) / 180);
+    let best = -1;
+    let bd = Infinity;
+    for (let i = 0; i < d.lon.length; i++) {
+      const dx = (d.lon[i] / 1e5 - lon) * k;
+      const dy = d.lat[i] / 1e5 - lat;
+      const q = dx * dx + dy * dy;
+      if (q < bd) {
+        bd = q;
+        best = i;
+      }
+    }
+    return best >= 0 && Math.sqrt(bd) * 111 <= maxKm ? d.munis[d.m[best]] : null;
+  }
+
+  /**
    * 名前の前方一致 → 名前の部分一致 → 「市区町村＋名前」の前方一致・部分一致 の順。
    * ★件数は `maxResults` で打ち切る。**打ち切ったことを返す**（黙って落とさない）。
    */

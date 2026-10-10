@@ -146,3 +146,9 @@ h1 { font-size: 1.1rem; margin: 0 0 4px; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin, #busy.nudge { animation: none; } }
+
+/* 浸水想定区域の重ね表示（2026-10-11） */
+.hz-h { margin: 14px 0 4px; font-weight: 600; }
+.hz-h .note { font-weight: normal; margin-left: 6px; }
+.hz-lg { display: block; max-width: 160px; height: auto; margin: 6px 0; background: #fff; }
+#naisui-cov.bad { color: var(--alert); font-weight: 600; }

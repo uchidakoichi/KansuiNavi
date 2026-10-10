@@ -43,6 +43,26 @@ export const ROAD_KANSUI_ATTRIB =
   // ★地図の上に常時出るので短くする。詳しい出典はパネルの「データの出典と利用条件」に書いてある
   "冠水想定箇所: 国土交通省等の公表資料を本アプリが加工";
 
+/**
+ * ★浸水想定区域の重ね表示（2026-10-11・利用者判断）。ハザードマップポータルサイトの**全国統合版**タイルを
+ *   その場で読む（opendata.html「URLからリアルタイムに読み込み」。商用・非商用を問わず利用可）。
+ * ★**経路の計算には使わない**（`hazard.w2_hazard: 0.0`。藤沢版の決定を継承）。重ねて見るだけ。
+ * ★データの無いタイルは 404 が返る（2026-10-11 実測）。→ 下の `onError` から外す（画面にエラーを出さない）
+ */
+export const HAZARD_LAYERS = {
+  flood_l2: {
+    url: "https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png",
+    attribution:
+      '洪水浸水想定区域: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>（国土交通省各地方整備局等・都道府県）',
+  },
+  naisui: {
+    url: "https://disaportaldata.gsi.go.jp/raster/02_naisui_data/{z}/{x}/{y}.png",
+    attribution:
+      '内水浸水想定区域: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>（市町村）',
+  },
+} as const;
+export type HazardKey = keyof typeof HAZARD_LAYERS;
+
 import { STATE } from "./state";
 /** NK-09 の表示レイヤ（roadkansui.ts が足す）。地図のクリックで出発地にしない */
 export const RK_LAYERS = ["rk-hit-uncertain", "rk-hit-confirmed"];
@@ -76,6 +96,12 @@ function baseStyle(): StyleSpecification {
         maxzoom: 18,
         attribution: ATTRIB,
       },
+      ...Object.fromEntries(
+        Object.entries(HAZARD_LAYERS).map(([k, v]) => [
+          k,
+          { type: "raster" as const, tiles: [v.url], tileSize: GSI_TILE_SIZE, minzoom: 2, maxzoom: 17, attribution: v.attribution },
+        ]),
+      ),
       route: { type: "geojson", data: EMPTY },
       baseline: { type: "geojson", data: EMPTY },
       meshes: { type: "geojson", data: EMPTY },
@@ -88,6 +114,14 @@ function baseStyle(): StyleSpecification {
     layers: [
       { id: "bg", type: "background", paint: { "background-color": "#eef1f4" } },
       { id: "pale", type: "raster", source: "pale" },
+      // ★浸水想定区域は道路の線より下に置く（経路と黄〜赤の線を隠さない）。既定は出さない＝タイルを取りに行かない
+      ...(Object.keys(HAZARD_LAYERS) as HazardKey[]).map((k) => ({
+        id: k,
+        type: "raster" as const,
+        source: k,
+        paint: { "raster-opacity": 0.6 },
+        layout: { visibility: "none" as const },
+      })),
 
       // ★★対象範囲の外周（配布データに区画がある範囲）。
       //   この外をタップすると「対象範囲の外」と断る。**同じ区画の集合から描く**ので
@@ -227,6 +261,8 @@ export interface MapHandles {
   setEnds(fc: FeatureCollection): void;
   /** F-08 で選んだ区間を強調し、そこへ寄せる。null で消す */
   focusSegment(lines: [number, number][][] | null): void;
+  /** 浸水想定区域の重ね表示を出す・消す */
+  setHazard(key: HazardKey, on: boolean): void;
   fit(bbox: [number, number, number, number]): void;
 }
 
@@ -252,7 +288,12 @@ export function createMap(
   });
   // ★MapLibre の失敗を**画面に出す**。console だけだと実機で気づけない。
   //   スタイル検証の失敗はここに ErrorEvent として届く（上の `glyphs` の件）。
-  map.on("error", (e) => onError?.(String(e?.error?.message ?? e?.error ?? "不明なエラー")));
+  map.on("error", (e) => {
+    // ★浸水想定区域のタイルは、区域の無いところで 404 が返る（正常）。エラーとして出さない
+    const sid = (e as unknown as { sourceId?: string }).sourceId;
+    if (sid && sid in HAZARD_LAYERS) return;
+    onError?.(String(e?.error?.message ?? e?.error ?? "不明なエラー"));
+  });
 
   const src = (id: string) => map.getSource(id) as GeoJSONSource | undefined;
   return {
@@ -262,6 +303,7 @@ export function createMap(
     setMeshes: (fc) => src("meshes")?.setData(fc),
     setOverlay: (fc) => src("overlay")?.setData(fc),
     setCoverage: (fc) => src("coverage")?.setData(fc),
+    setHazard: (key, on) => map.setLayoutProperty(key, "visibility", on ? "visible" : "none"),
     setEnds: (fc) => src("ends")?.setData(fc),
     focusSegment: (lines) => {
       src("focus")?.setData(

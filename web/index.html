@@ -59,6 +59,27 @@
         <p class="note">ほかに道が無いとき（出発地・目的地がアンダーパスの向こうにしか出られない場所など）だけ通り、その数を表示します。</p>
       </div>
 
+      <!-- 浸水想定区域の重ね表示（2026-10-11）。★既定は出さない（押したときだけハザードマップポータルのタイルを取る）。
+           ★経路の計算には使わない。★配信されていない場所ではその旨を出す（空白を「安全」と読ませない） -->
+      <div class="ctl" id="hz">
+        <p class="hz-h">浸水想定区域を重ねる<span class="note">（経路の計算には使いません）</span></p>
+        <label class="chk"><input id="naisui" type="checkbox" />内水（雨水出水）浸水想定区域</label>
+        <div id="naisui-info" hidden>
+          <p id="naisui-cov" class="note" role="status"></p>
+          <img class="hz-lg" src="legend/naisui.png" alt="内水浸水想定区域の凡例（浸水深 0.1m〜20m以上）" width="200" height="223" />
+          <p class="note">★<b>配信は全国の一部の市町村だけです</b>（オープンデータ化を許可した市町村。<span id="naisui-n"></span>）。
+            浸水深 0.1m 未満は表示されません。<b>着色の無い場所でも浸水することがあります。</b></p>
+        </div>
+        <label class="chk"><input id="flood_l2" type="checkbox" />洪水浸水想定区域（想定最大規模）</label>
+        <div id="flood_l2-info" hidden>
+          <img class="hz-lg" src="legend/flood_l2.png" alt="洪水浸水想定区域の凡例（浸水深 0.3m未満〜20m以上）" width="154" height="154" />
+          <p class="note">★国が管理する河川は全国、都道府県が管理する河川は<b>掲載の許諾を得た河川だけ</b>です。
+            ★<b>着色の無い場所でも、掲載されていない川の氾濫で浸水することがあります。</b></p>
+        </div>
+        <p class="note">出典: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>
+          （洪水: 国土交通省各地方整備局等・都道府県／内水: 市町村）。凡例も同サイトのもの。</p>
+      </div>
+
       <!-- F-09 ★利用者が押したときだけ新版へ交代する。勝手に切り替えない -->
       <button id="update" class="btn primary" hidden>新しいデータに更新</button>
       <!-- ★オフラインが使えない環境ではその旨を出す（黙って機能を落とさない） -->
@@ -138,6 +159,9 @@
             本アプリが加工して使用しています。</li>
           <li>道路網・住所・交差点名: © <a href="https://www.openstreetmap.org/copyright" target="_blank"
             rel="noopener">OpenStreetMap</a> contributors（ODbL）。</li>
+          <li>浸水想定区域（重ねて表示したとき）: 出典：<a href="https://disaportal.gsi.go.jp/" target="_blank"
+            rel="noopener">ハザードマップポータルサイト</a>（洪水浸水想定区域〈想定最大規模〉: 国土交通省各地方整備局等・都道府県／
+            内水〈雨水出水〉浸水想定区域: 市町村）。地図の画像と凡例をそのまま重ねて表示しています。</li>
           <li>住所検索の都道府県名・市区町村名: 「国土数値情報（行政区域データ）」（国土交通省）を加工して作成
             （<a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">国土数値情報ダウンロードサイト</a>）。</li>
           <li class="nk09" hidden>冠水想定箇所: 出典：国土交通省 東北・北陸・中部・近畿・中国・四国・九州地方整備局、内閣府 沖縄総合事務局
@@ -169,7 +193,7 @@
           経路に必要な道路データの範囲</b>が各事業者に届きます。運営者はこれらの記録を取得していません。
           各事業者での取扱いは、それぞれの方針によります。</p>
         <ul class="note">
-          <li>国土地理院（地図の画像の取得）: <a href="https://www.gsi.go.jp/GSI/puraibasi-porisi.htm"
+          <li>国土地理院（地図の画像の取得。浸水想定区域を重ねたときは、ハザードマップポータルサイトの地図の画像も取得します）: <a href="https://www.gsi.go.jp/GSI/puraibasi-porisi.htm"
             target="_blank" rel="noopener">国土地理院 プライバシーポリシー</a></li>
           <li>Cloudflare, Inc.（本アプリと道路データの配信）: <a href="https://www.cloudflare.com/privacypolicy/"
             target="_blank" rel="noopener">Cloudflare's Privacy Policy</a></li>
@@ -177,7 +201,7 @@
         <p><b>5. 改定</b><br />必要に応じて改定し、本アプリ内に掲示します。外部へ情報を送る機能を追加するときは、その前に改定します。</p>
         <p><b>6. お問い合わせ</b><br />X（旧 Twitter）のダイレクトメッセージ:
           <a href="https://x.com/uchidakoichi" target="_blank" rel="noopener">@uchidakoichi</a></p>
-        <p class="note">制定日: 2026年10月7日</p>
+        <p class="note">制定日: 2026年10月7日 ／ 改定日: 2026年10月11日（浸水想定区域の重ね表示を追加）</p>
       </details>
     </aside>
 
