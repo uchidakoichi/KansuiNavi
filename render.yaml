@@ -1,0 +1,45 @@
+# Render の Blueprint（2026-10-07）。全国版のアプリ本体だけを Render の静的サイトとして配る。
+# ★配布データ（約590MB）は Render に置かない。Cloudflare Pages の kansui-data.pages.dev から読む（CORS 許可済み）。
+#   Render の無料の静的サイトは帯域を「月の含まれる量」から使い、使い切ると、支払い方法が無ければ
+#   **無料のサービスがすべて止まる**（https://render.com/docs/free 2026-10-07 確認）。アプリ本体だけなら量は小さい。
+# ★ヘッダは web/public/_headers（Cloudflare 用）と同じ内容をここで指定する（Render は _headers を読まない）。
+services:
+  - name: kansui-national
+    type: web
+    runtime: static
+    rootDir: web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    branch: master
+    autoDeployTrigger: commit
+    envVars:
+      - key: VITE_DATA_BASE
+        value: https://kansui-data.pages.dev/data
+    headers:
+      # 配布先 URL を地図タイルやリンク先へ渡さない／検索エンジンに載せない
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: X-Robots-Tag
+        value: noindex, nofollow
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      # 内容ハッシュ付きの資産は永続
+      - path: /assets/index-*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /assets/router.worker-*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      # 入口と Service Worker は毎回確かめさせる（実際の再取得は Service Worker が抑える）
+      - path: /
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate, no-transform
+      - path: /index.html
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate, no-transform
+      - path: /sw.js
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate

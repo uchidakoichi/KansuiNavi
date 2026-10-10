@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>考え方と計算方法</title>
+<!-- ★外部のフォント・スクリプトを読まない（プライバシーポリシー: 第三者へ通信しない）。システムの書体だけを使う -->
+<style>
+  :root{
+    --paper:#eef2f5; --surface:#ffffff; --surface-2:#e6ecf1;
+    --ink:#14202c; --ink-2:#3a4a58; --muted:#5f7080; --line:#c6d1da; --line-2:#dbe3e9;
+    --accent:#1c6ea4; --kansui:#8b1a4a; --unknown:#3b4c5a;
+    --risk-1:#f6c445; --risk-2:#ef8a2b; --risk-3:#c8341f;
+    --warn:#8a2b12; --warn-bg:#fbeae4; --ok:#1e6e4b;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --paper:#0d151d; --surface:#16212c; --surface-2:#1e2b37;
+    --ink:#dfe8ef; --ink-2:#b3c3cf; --muted:#8798a6; --line:#2c3b48; --line-2:#243139;
+    --accent:#58a6dd; --kansui:#e0699a; --unknown:#8ba1b1;
+    --risk-2:#f0954a; --risk-3:#e0553c; --warn:#f0916d; --warn-bg:#2b1a15; --ok:#5fbf92;
+  }}
+  :root[data-theme="dark"]{
+    --paper:#0d151d; --surface:#16212c; --surface-2:#1e2b37;
+    --ink:#dfe8ef; --ink-2:#b3c3cf; --muted:#8798a6; --line:#2c3b48; --line-2:#243139;
+    --accent:#58a6dd; --kansui:#e0699a; --unknown:#8ba1b1;
+    --risk-2:#f0954a; --risk-3:#e0553c; --warn:#f0916d; --warn-bg:#2b1a15; --ok:#5fbf92;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:system-ui,-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:16px;line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px 80px}
+  h1,h2,h3{text-wrap:balance;margin:0;line-height:1.45}
+  h1{font-size:clamp(26px,5vw,36px);font-weight:700}
+  h2{font-size:clamp(20px,3.4vw,25px);font-weight:700}
+  h3{font-size:17px;font-weight:700;margin-top:26px}
+  p{margin:10px 0 0}
+  a{color:var(--accent);text-underline-offset:3px}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;color:var(--muted);font-weight:700;margin:0}
+  header{padding:40px 0 20px}
+  .lede{color:var(--ink-2);font-size:17px}
+  nav.toc{margin-top:22px;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:6px;font-size:14.5px}
+  nav.toc ol{margin:6px 0 0;padding-left:1.4em;columns:2;column-gap:28px}
+  @media (max-width:560px){nav.toc ol{columns:1}}
+  section{padding:34px 0;border-top:1px solid var(--line-2)}
+  .warnbox{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--warn);border-radius:6px;padding:18px 20px}
+  .warnbox ul{margin:10px 0 0;padding-left:1.2em}
+  .shout{margin-top:14px;padding:12px 14px;background:var(--warn-bg);color:var(--warn);border-radius:6px;font-weight:700}
+  .formula{margin:14px 0;padding:14px 16px;background:var(--surface-2);border-radius:6px;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:14.5px;line-height:1.8;
+    overflow-x:auto;white-space:pre}
+  .defs{border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-top:12px;background:var(--surface)}
+  .defs div{display:grid;grid-template-columns:128px 1fr;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line-2);font-size:14.5px}
+  .defs div:last-child{border-bottom:0}
+  @media (max-width:520px){.defs div{grid-template-columns:1fr;gap:2px}}
+  .sym{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-weight:700}
+  .mean{color:var(--ink-2)}
+  .why{margin-top:12px;padding-left:14px;border-left:3px solid var(--line);font-size:14.5px;color:var(--ink-2)}
+  .callout{margin-top:14px;border-left:3px solid var(--accent);padding:2px 0 2px 14px;color:var(--ink-2)}
+  .note{font-size:14px;color:var(--muted)}
+  .warnline{color:var(--warn);font-weight:600;font-size:15px}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface);margin-top:12px}
+  table{border-collapse:collapse;width:100%;min-width:440px;font-size:14.5px}
+  th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line-2);vertical-align:top}
+  thead th{font-size:12.5px;color:var(--muted);background:var(--surface-2)}
+  tbody tr:last-child th,tbody tr:last-child td{border-bottom:0}
+  td.n{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .legend{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface);margin-top:12px}
+  .legend .row{display:grid;grid-template-columns:84px 1fr;gap:16px;padding:14px 16px;border-bottom:1px solid var(--line-2)}
+  .legend .row:last-child{border-bottom:0}
+  .sw{height:22px;display:grid;align-items:center}
+  .sw i{display:block;width:100%}
+  .sw-grad{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--risk-1),var(--risk-2),var(--risk-3))}
+  .sw-up{height:5px;background:var(--unknown)}
+  .sw-kn{height:7px;border-radius:3px;background:var(--kansui)}
+  .sw-pt{width:14px!important;height:14px;border-radius:50%;background:var(--kansui);border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+  .sw-circle{width:30px!important;height:22px;border:1.5px dashed var(--kansui);border-radius:50%}
+  .sw-route{height:6px;border-radius:3px;background:#2f7fb8}
+  .sw-base{height:4px;background:repeating-linear-gradient(90deg,var(--muted) 0 7px,transparent 7px 12px)}
+  .legend .t{font-weight:700}
+  .legend .d{margin-top:3px;font-size:14px;color:var(--ink-2)}
+  figure{margin:16px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px 16px 12px}
+  figure svg{display:block;width:100%;height:auto}
+  figcaption{margin-top:10px;font-size:13.5px;color:var(--muted);text-align:center}
+  .duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:12px}
+  .panel{border:1px solid var(--line);border-radius:6px;padding:16px 18px;background:var(--surface)}
+  .panel.yes{border-top:4px solid var(--ok)} .panel.no{border-top:4px solid var(--warn)}
+  .panel h3{margin:0;font-size:15px}
+  .panel ul{margin:10px 0 0;padding-left:1.15em;font-size:14.5px;color:var(--ink-2)}
+  .panel li{margin-top:6px}
+  footer{padding-top:28px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+  .back{display:inline-block;margin-top:16px;font-weight:700}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">冠水回避ルート検索（全国版・実証実験）</p>
+  <h1>このアプリの考え方と計算方法</h1>
+  <p class="lede">
+    大雨で水がたまりやすそうな道を<b>地形から推定</b>し、そこをなるべく通らない道を出すアプリです。
+    このページでは、<b>何を根拠に線を引いているのか</b>、<b>どこまで信用できるのか</b>を、計算しているとおりに説明します。
+  </p>
+  <p><a class="back" href="./">← アプリに戻る</a></p>
+  <nav class="toc" aria-label="目次">
+    <b>目次</b>
+    <ol>
+      <li><a href="#first">先に読んでください</a></li>
+      <li><a href="#legend">地図の線の見方</a></li>
+      <li><a href="#idea">考え方 ― 低い場所ではなく、まわりより低い場所</a></li>
+      <li><a href="#dem">使っている標高データ</a></li>
+      <li><a href="#score">地形スコアの計算</a></li>
+      <li><a href="#rain">「雨の強さ」のつまみ</a></li>
+      <li><a href="#unknown">「判定不能」とは</a></li>
+      <li><a href="#kansui">冠水想定箇所（公表データ）</a></li>
+      <li><a href="#route">経路の計算</a></li>
+      <li><a href="#notused">計算に入れていないもの</a></li>
+      <li><a href="#accuracy">どれくらい当たるか</a></li>
+      <li><a href="#read">結果の読み方</a></li>
+      <li><a href="#limits">できること・できないこと</a></li>
+      <li><a href="#sources">出典</a></li>
+    </ol>
+  </nav>
+</header>
+
+<section id="first">
+  <div class="warnbox">
+    <h2>先に読んでください</h2>
+    <ul>
+      <li>これは<b>実証実験</b>のアプリです。国・自治体の公式な避難誘導や、通行できるかどうかの判断を行うものではありません。</li>
+      <li>出てくるのは「安全な経路」ではなく、<b>静的なデータ上、相対的にリスクが低いと推定される経路</b>です。</li>
+      <li><b>いま降っている雨や、通行止め・工事・事故の情報は入っていません。</b>地形と公表データだけで計算しています。</li>
+      <li><b>色がついていない道にも、水がたまることはあります。</b>「表示がない＝安全」ではありません。</li>
+      <li>通るかどうかの最終判断は、必ず現地の状況を見てご自身で行ってください。</li>
+    </ul>
+    <p class="shout">冠水した道路には、絶対に進入しないでください。</p>
+  </div>
+</section>
+
+<section id="legend">
+  <h2>地図の線の見方</h2>
+  <p class="note">色は「危険度の順番」ではなく、<b>何を根拠にそう言っているか</b>で分けています。根拠の違うものを混ぜないためです。</p>
+  <div class="legend">
+    <div class="row"><span class="sw"><i class="sw-grad"></i></span><div>
+      <p class="t">黄〜赤の線 ／ 地形からの推定</p>
+      <p class="d">まわりより低く、水が集まりやすそうな道（「雨の強さ」の閾値を超えた区間）。赤に近いほど、まわりとの高低差が小さい（より低い）ことを表します。<b>実際に水がたまった記録ではありません。</b><br>
+      ★<b>経路を引いたときに読み込んだ範囲（経路の周り数km）だけ</b>に薄く重ねます。全国を一度には読み込めないため、<b>経路を引く前や、読み込んでいない場所には出ません</b>。</p></div></div>
+    <div class="row"><span class="sw"><i class="sw-route"></i></span><div>
+      <p class="t">青い線（太い） ／ 提案する経路</p>
+      <p class="d">リスクをなるべく避けるように計算した道。経路の上でも、点灯している区間は黄〜赤、判定不能は濃い灰色で描きます。<b>既定では点灯区間を避けるので、ほとんど青</b>になります。色の付いた区間を見たいときは「リスクをどれだけ避けるか」を 0 にすると、最短の道で点灯区間がそのまま出ます。</p></div></div>
+    <div class="row"><span class="sw"><i class="sw-up"></i></span><div>
+      <p class="t">濃い灰色の線 ／ 判定不能</p>
+      <p class="d">アンダーパス・高架下など、<b>地形からは危険とも安全とも判定できない</b>区間。4段階の色には混ぜません（<a href="#unknown">理由</a>）。</p></div></div>
+    <div class="row"><span class="sw"><i class="sw-pt"></i></span><div>
+      <p class="t">赤紫の点 ／ 冠水想定箇所（位置を確かめられたもの）</p>
+      <p class="d">国の公表データにある箇所。経路の計算では<b>最もリスクの高い区間</b>として扱います。経路が通ると赤紫で描きます。</p></div></div>
+    <div class="row"><span class="sw"><i class="sw-circle"></i></span><div>
+      <p class="t">赤紫の破線の円 ／ 冠水想定箇所（位置は未確認）</p>
+      <p class="d">円のどこかにあると推定したもの。<b>経路の計算には使っていません。</b>押すと元の資料と確かめ方が出ます。<br>★説明は<b>円の中心の白い丸</b>を押すと開きます。円の中のほかの場所は、ふつうに出発地・目的地として押せます。</p></div></div>
+    <div class="row"><span class="sw"><i class="sw-base"></i></span><div>
+      <p class="t">灰色の破線 ／ 最速の経路（比較用）</p>
+      <p class="d">リスクを一切考えずに、いちばん早く着く経路。提案した経路との差が、迂回の「代金」です。</p></div></div>
+  </div>
+</section>
+
+<section id="idea">
+  <h2>考え方 ― 「低い場所」ではなく「まわりより低い場所」</h2>
+  <p>
+    標高が低いことと、水がたまることは別ものです。海沿いの平地は標高が低くても、水は海へ抜けていきます。
+    逆に、高台の中のくぼ地には水がたまります。冠水の条件は<b>「まわりより低い（水が集まる）」＋「抜けない（排水が追いつかない）」</b>なので、
+    中心の指標は<b>絶対標高ではなく、近くのいちばん低い所との差</b>にしています。
+  </p>
+  <div class="formula">Δh(p) = h(p) − min{ h(q) | q ∈ N(p, r) }</div>
+  <div class="defs">
+    <div><span class="sym">p</span><span class="mean">評価する地点（道路の上の点）</span></div>
+    <div><span class="sym">h</span><span class="mean">標高［m］</span></div>
+    <div><span class="sym">N(p, r)</span><span class="mean">p を中心とする半径 r の円の中</span></div>
+    <div><span class="sym">r</span><span class="mean"><b>100m と 250m の2つ</b>を併用</span></div>
+  </div>
+  <p class="why">
+    Δh ≈ 0 なら、半径 r の中でそこが最も低い＝<b>くぼ地の底</b>です。Δh が大きいほど、まわりより高い＝相対的にリスクが低いと読みます。
+    2つの半径を使うのは、100m だけだと道路の細かな凹凸を拾い、250m だけだと小さなくぼ地を見落とすためです。
+  </p>
+</section>
+
+<section id="dem">
+  <h2>使っている標高データ</h2>
+  <div class="defs">
+    <div><span class="sym">出所</span><span class="mean">国土地理院の標高タイル。<b>5mメッシュ（DEM5A・5B・5C）</b>を優先し、画素ごとに精度の高い順で埋めます</span></div>
+    <div><span class="sym">10mメッシュ</span><span class="mean">5mメッシュが整備されていない所（北海道・東北・奄美・沖縄の一部など）は <b>DEM10B（誤差の目安 5m）</b>で推定します。その区間は注意地点の一覧に「精度の低い10mメッシュの標高からの推定」と出し、標高プロファイルでは細かい点線で示します。<b>数 m のくぼみは誤差に埋もれることがあります</b></span></div>
+    <div><span class="sym">水面</span><span class="mean">5mメッシュは川や池の水面を「欠損」にしています。そこを10mメッシュで埋めると水面の高さで結果が変わるので、<b>水域（地理院の水域データ）の画素は埋めません</b></span></div>
+    <div><span class="sym">精度</span><span class="mean">5mメッシュの標高精度は標準偏差 0.3〜1.4m。<b>数cmの差を意味のあるものとして扱っていません</b></span></div>
+    <div><span class="sym">欠損</span><span class="mean">データの無い画素を「標高0m」と読まない。0m と読むと、水部が「最も低い＝最も危険」になってしまうためです。どの種類でも無ければ<b>「標高不明」のまま</b>にし、その区間は<a href="#unknown">判定不能</a>になります</span></div>
+    <div><span class="sym">距離</span><span class="mean">距離の計算は、地域ごとの<b>平面直角座標系（全国19系）</b>で行います。ウェブ地図の座標のまま測ると、北緯35度で約1.2倍の誤差が出るためです</span></div>
+  </div>
+  <h3>道路への割り当て</h3>
+  <p>
+    道路データ（OpenStreetMap）の中心線を <b>20m おき</b>に区切って Δh を求め、1本の道（区間）にまとめるときは
+    <b>平均ではなく最大値（最も危ない点）</b>を採ります。
+  </p>
+  <p class="why">1点でも危ないくぼみがあれば、その道は危ないからです。平均を採ると、長い道の中の1か所のくぼ地が薄まって消えてしまいます。</p>
+</section>
+
+<section id="score">
+  <h2>地形スコアの計算</h2>
+  <div class="formula">S_topo = √( exp(−Δh₁₀₀ / d) · exp(−Δh₂₅₀ / d) )
+       = exp( −(Δh₁₀₀ + Δh₂₅₀) / 2d )        d = 1.0 m</div>
+  <p class="note">値は 0〜1。<b>1 に近いほど「まわりより低い」</b>ことを表します。</p>
+  <p class="why">
+    <b>なぜ2つを掛けて平方根を取るのか（幾何平均）。</b>指数の中が足し算になるので、d の値を変えても道の順位が変わりません。
+    表示の目盛りを変えても予測の良さが動かない、という性質が必要だからです。<br>
+    <b>なぜ大きい方・小さい方の一方だけを使わないのか。</b>定義上いつも Δh₂₅₀ ≧ Δh₁₀₀ なので、片方を採るともう片方のスケールが効かなくなります。<br>
+    <b>なぜ指数なのか。</b>直線で頭打ちにすると、Δh が大きい側の順位が潰れます（藤沢で比べたところ、直線の頭打ちは予測の良さが明らかに劣りました）。
+  </p>
+</section>
+
+<section id="rain">
+  <h2>「雨の強さ」のつまみ</h2>
+  <div class="formula">点灯する道:  S_topo &gt; exp(−D)        D = つまみの値［m］</div>
+  <p>
+    つまみを強くするほど D が大きくなり、色のつく道が増えます。
+    S_topo &gt; exp(−D) は <b>(Δh₁₀₀ + Δh₂₅₀) / 2 &lt; D</b> と同じ意味なので、
+    「<b>まわりとの高低差が平均 D メートル未満の道を点灯させる</b>」ということです。
+  </p>
+  <div class="defs">
+    <div><span class="sym">校正点</span><span class="mean"><b>D = 1.407m</b>。藤沢市の想定最大規模の雨（1時間153mm）の内水浸水想定区域と、点灯する範囲の<b>面積が一致する位置</b>です</span></div>
+    <div><span class="sym">★全国では</span><span class="mean">この校正は<b>藤沢市の図だけ</b>で行ったものです。<b>他の地域で同じ意味になるかは測っていません</b></span></div>
+    <div><span class="sym">mm/h でない理由</span><span class="mean">校正できる点が1つしかないためです。途中の数字を書くと根拠のない補間になり、天気予報の雨量と取り違えられます</span></div>
+  </div>
+</section>
+
+<section id="unknown">
+  <h2>「判定不能」とは</h2>
+  <p>
+    アンダーパス（線路や道路の下をくぐる道）は、大雨でいちばん水没しやすい場所です。
+    ところが標高データでは、<b>その低さが見えません</b>。
+  </p>
+  <figure>
+    <svg viewBox="0 0 640 250" role="img" aria-label="標高データは橋の路面の高さを記録するため、その下をくぐる道路の低さが現れないことを示す断面図">
+      <path d="M20 176 L215 176 Q250 176 268 200 L372 200 Q390 176 425 176 L620 176" fill="none" stroke="var(--muted)" stroke-width="2.5"/>
+      <path d="M20 172 L215 172 Q250 172 268 196 L372 196 Q390 172 425 172 L620 172" fill="none" stroke="var(--risk-3)" stroke-width="4" stroke-linecap="round"/>
+      <rect x="255" y="118" width="130" height="15" fill="var(--unknown)"/>
+      <rect x="258" y="133" width="10" height="24" fill="var(--unknown)" opacity=".55"/>
+      <rect x="372" y="133" width="10" height="24" fill="var(--unknown)" opacity=".55"/>
+      <path d="M20 168 L232 168 L255 114 L385 114 L408 168 L620 168" fill="none" stroke="var(--risk-1)" stroke-width="3" stroke-dasharray="8 6"/>
+      <text x="20" y="40" fill="var(--ink)" font-size="15" font-weight="700">標高データが記録する面（黄色の破線）</text>
+      <text x="20" y="64" fill="var(--ink-2)" font-size="13.5">橋のところで、橋の路面の高さになってしまう</text>
+      <text x="20" y="232" fill="var(--risk-3)" font-size="13.5" font-weight="700">実際に車が通る道（赤）は、橋の下でぐっと低い</text>
+      <line x1="320" y1="140" x2="320" y2="190" stroke="var(--kansui)" stroke-width="1.5"/>
+      <path d="M316 186 L320 192 L324 186 Z" fill="var(--kansui)"/>
+      <path d="M316 144 L320 138 L324 144 Z" fill="var(--kansui)"/>
+      <text x="332" y="170" fill="var(--kansui)" font-size="13" font-weight="700">この低さが、データに出ない</text>
+    </svg>
+    <figcaption>標高データは「上から見ていちばん上にある面」を測ります。橋の下をくぐる道では、橋の路面のほうが測られます。</figcaption>
+  </figure>
+  <p>
+    つまり、<b>いちばん危ない場所が、データの上では「低い場所」として現れません</b>。
+    そこで、そういう場所を<b>「危険」でも「安全」でもなく「判定不能」</b>として、4段階の色から外し、濃い灰色で示しています。
+    「わからない」を「大丈夫」に丸めない、という考え方です。
+  </p>
+  <h3>どうやって見つけているか</h3>
+  <p>
+    地図データ（OpenStreetMap）では、立体交差は「上の道を橋にする」か「下の道をトンネルにする」かの<b>どちらか一方</b>で表すのが正しい書き方です。
+    そのため、<b>橋の下をくぐる道には印が付いていないのが普通</b>です。
+    このアプリは、<b>車の通る道が、橋（道路・鉄道）と交わっているのに地図上でつながっていない所</b>を、交差の形から見つけています。
+  </p>
+  <p class="note">藤沢で空中写真と1か所ずつ見比べたところ、こうして見つけた120か所のうち116か所（96.7%）が本当に立体交差でした。<b>他の地域で同じ精度かは測っていません。網羅も保証できません。</b></p>
+  <h3>もう一つの判定不能 ― 標高データが無い区間</h3>
+  <p>標高データが無い区間も、地形からは判定できないので同じ扱いにしています。注意地点の一覧では「標高データが無い区間」と、理由を分けて出します。</p>
+  <p class="callout">
+    判定不能の場所を通りたくないときは、<b>「検出できたアンダーパスを除外する」</b>にチェックを入れてください。
+    「リスクをどれだけ避けるか」のつまみでは避けられません（<a href="#route">理由</a>）。
+  </p>
+</section>
+
+<section id="kansui">
+  <h2>冠水想定箇所（公表データ）</h2>
+  <p>
+    国が「大雨で冠水するおそれがある」と公表している箇所です。地形からの推定ではなく<b>公表された箇所</b>なので、
+    雨の強さのつまみに関係なく表示し、経路の計算では<b>最もリスクの高い区間</b>として扱います。
+  </p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>地域</th><th>位置の出所</th><th>確かめ方</th></tr></thead>
+    <tbody>
+      <tr><th>北海道・東北・北陸・中部・近畿・中国・四国・九州・沖縄</th>
+        <td>各地方整備局等の「道路防災情報Webマップ」が公表している<b>座標</b></td>
+        <td>座標の市区町村が、その箇所の説明表（PDF）に書かれているか ／ 橋でない道路に 30m 以内で結び付くか</td></tr>
+      <tr><th>関東（東京・神奈川・千葉・茨城・栃木・山梨）</th>
+        <td>座標は公表されていないので、<b>資料の地図の番号付きの印から、本アプリが位置を推定</b></td>
+        <td>資料の地図の印と、道路データの立体交差・トンネルの位置が一致するか</td></tr>
+    </tbody>
+  </table></div>
+  <div class="defs">
+    <div><span class="sym">点</span><span class="mean">上の確かめ方を通ったもの。<b>経路の計算に使います</b></span></div>
+    <div><span class="sym">破線の円</span><span class="mean">位置が確かめられないもの。<b>表示だけ</b>で、経路の計算には使いません</span></div>
+    <div><span class="sym">一覧だけ</span><span class="mean">位置を決められなかったもの。パネルの「冠水想定箇所」の一覧に、元の資料へのリンクと一緒に出します</span></div>
+    <div><span class="sym">未収録</span><span class="mean">埼玉・群馬・長野（資料の地図から位置を十分に読み取れないため）</span></div>
+  </div>
+  <p class="callout">
+    印を押すと、<b>元の資料（PDF）の該当ページと、どこを見れば確かめられるか</b>が出ます。
+    気になる箇所は、ご自身の目で資料と見比べてください。
+    ★確かめ方は機械で行っていて、AI（大規模言語モデル）の判断は使っていません。
+  </p>
+  <p class="warnline">掲載されていない場所でも冠水は起きます。通行の際は、現地の案内や規制情報に従ってください。</p>
+</section>
+
+<section id="route">
+  <h2>経路の計算</h2>
+  <p>経路は、道ごとの「コスト」の合計が最も小さくなる道すじを、<b>お使いの端末の中で</b>計算しています（サーバには送りません）。</p>
+  <div class="formula">cost(e) = t(e) × ( 1 + λ·risk(e) + μ·narrow(e) )</div>
+  <div class="defs">
+    <div><span class="sym">t(e)</span><span class="mean">その道の通過時間［秒］（道の種類と制限速度から）</span></div>
+    <div><span class="sym">risk(e)</span><span class="mean"><span class="sym">max( 0, S_topo − exp(−D) )</span>。<b>点灯した分だけ</b>効きます。冠水想定箇所（点）は最大値</span></div>
+    <div><span class="sym">narrow(e)</span><span class="mean">道の狭さ（0〜1）。国土地理院の<b>幅員区分</b>（3m未満／3〜5.5m／5.5〜13m／13〜19.5m／19.5m以上）から決めます</span></div>
+    <div><span class="sym">λ</span><span class="mean">「リスクをどれだけ避けるか」。既定 <b>8</b>（0〜64 の15段）</span></div>
+    <div><span class="sym">μ</span><span class="mean">「広い道を優先」。既定 <b>0.5</b></span></div>
+  </div>
+  <p class="why">
+    <b>リスクと道幅を別の項にしています。</b>足し合わせて1つの値にすると、<b>どちらの理由で遠回りしたのかを説明できなくなる</b>ためです。
+    地形からの推定（risk）と、災害時は狭い道が問題になりやすいという運用上の好み（narrow）は、根拠の性質が違います。<br>
+    <b>判定不能（アンダーパス）は risk = 0 として扱います。</b>「わからない」を「危険」に丸めないためです。
+    そのため λ をいくら上げても判定不能は避けられず、避けるにはチェックボックスで除外します。
+    除外すると、位置を確かめられた冠水想定箇所も一緒に避けます。ただし<b>ほかに道が無いとき</b>（出発地・目的地がアンダーパスの向こうにしか出られない場所など）は通り、その数を画面に出します。出発地・目的地を勝手に動かさないためです。<br>
+    <b>幅員は「区分」であって実測ではありません。</b>「3m未満」の道が本当に何mかは分からないので、消防車が通れるかなどの判断には使えません。
+  </p>
+  <div class="defs">
+    <div><span class="sym">広い道を優先</span><span class="mean">★上げるほど幹線を通ります。幹線ほど立体交差の下を通るので、<b>判定不能の通過が増えることがあります</b></span></div>
+    <div><span class="sym">長い経路</span><span class="mean">直線 40km までは常に計算します。それより長い経路は、読み込む道路データの量が一定以下のとき（最大 112km）だけ計算します。端末の負担を抑えるためです</span></div>
+    <div><span class="sym">つながらない所</span><span class="mean">出発地・目的地が、ほかとつながっていない小さな道路のかたまりにある場合は、近くのつながった道へ寄せて計算します</span></div>
+  </div>
+</section>
+
+<section id="notused">
+  <h2>計算に入れていないもの</h2>
+  <div class="defs">
+    <div><span class="sym">洪水・高潮の浸水想定区域</span><span class="mean">入れていません。藤沢での比較で、洪水の想定だけでは地形からの推定より当たりが低く、また川の氾濫は、このアプリが最も使われる大雨の場面より一段上の局面だからです</span></div>
+    <div><span class="sym">内水の浸水想定区域</span><span class="mean">入れていません。この図は<b>推定が当たっているかを採点する「答え」</b>に使っているためです。答えを見ながら答案を書けば、点数は上がっても実力は分かりません</span></div>
+    <div><span class="sym">いま降っている雨・通行止め</span><span class="mean">入っていません。事前に見ておくためのアプリです</span></div>
+    <div><span class="sym">排水設備</span><span class="mean">入っていません。標高データからは、排水管の太さも詰まりも見えません</span></div>
+  </div>
+</section>
+
+<section id="accuracy">
+  <h2>どれくらい当たるか</h2>
+  <p>
+    地形スコアが、市の内水（雨水出水）浸水想定区域をどれだけ言い当てるかを、<b>神奈川県の4市</b>で測りました。
+    AUC は 0.5 が当てずっぽう、1.0 が完璧です。
+  </p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>市</th><th>AUC（地形スコア）</th><th>AUC（標高だけ）</th></tr></thead>
+    <tbody>
+      <tr><th>横須賀市</th><td class="n">0.872</td><td class="n">0.831</td></tr>
+      <tr><th>綾瀬市</th><td class="n">0.837</td><td class="n">0.674</td></tr>
+      <tr><th>藤沢市</th><td class="n">0.713</td><td class="n">0.703</td></tr>
+      <tr><th>平塚市</th><td class="n">0.700</td><td class="n">0.720</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why">
+    <b>地域によって当たり方が大きく違います</b>（AUC 0.70〜0.87）。
+    「まわりより低い」で見るほうが「低い」で見るより当たる、という考え方も、<b>4市のうち3市では成り立ち、平塚市では逆でした</b>。
+    <b>「全国で◯%当たる」とは言えません。</b>測っていない地域の当たり方は分かりません。<br>
+    <b>原理的な上限があります。</b>冠水は「水が集まる」と「抜けない」の両方で決まるのに、標高データからは<b>前者しか見えません</b>。
+  </p>
+</section>
+
+<section id="read">
+  <h2>結果の読み方</h2>
+  <div class="defs">
+    <div><span class="sym">最速との比較</span><span class="mean">提案した経路と最速の経路の所要時間の差が、迂回の「代金」です。何が減って何が増えたかを並べて出します</span></div>
+    <div><span class="sym">注意地点の一覧</span><span class="mean">経路上の注意すべき区間を、危ない順に選んで<b>走る順に</b>並べます。行を押すと地図がそこへ移ります。<b>一覧に出ていない区間が安全という意味ではありません</b></span></div>
+    <div><span class="sym">標高プロファイル</span><span class="mean">経路に沿った高さの変化。<b>橋の上とトンネルの中</b>は、標高データが橋の下の地面や上の山の地表を測るので、両端を結んだ破線で示します。細かい点線は10mメッシュの区間、線が切れている所は標高データが無い区間です（0m として描きません）</span></div>
+    <div><span class="sym">オフライン</span><span class="mean">一度読み込んだ区画と地図は端末に残り、電波が無くても開いて経路を計算できます。ただし読んでいない区画へは経路を引けません</span></div>
+  </div>
+</section>
+
+<section id="limits">
+  <h2>できること・できないこと</h2>
+  <div class="duo">
+    <div class="panel yes"><h3>できること</h3><ul>
+      <li>地形から「まわりより低い道」を全国について機械的に洗い出す</li>
+      <li>アンダーパスを、地図データの印に頼らず<b>橋との交差の形から</b>見つけて別扱いにする</li>
+      <li>国が公表している冠水想定箇所を表示し、経路の計算に入れる</li>
+      <li>リスクを避けた経路と最速の経路を並べ、<b>代金を数字で見せる</b></li>
+      <li>電波が無くても、読み込み済みの範囲なら経路を計算する</li>
+    </ul></div>
+    <div class="panel no"><h3>できないこと</h3><ul>
+      <li><b>当たり方は地域で大きく違い、中くらいの所もあります</b></li>
+      <li>排水設備の能力が見えません</li>
+      <li>いま降っている雨、通行止め、工事、事故は反映していません</li>
+      <li>アンダーパスの見つけ方は、網羅を保証できません</li>
+      <li>道幅は区分で、実際の幅（特に車が通れる幅）は分かりません</li>
+      <li>自動車の経路だけです（徒歩・自転車は対象外）</li>
+    </ul></div>
+  </div>
+  <p class="note">「危険と出た＝必ず冠水する」でも「出ない＝安全」でもありません。地形だけで冠水を当てにいく方法には、原理的な上限があります。</p>
+</section>
+
+<section id="sources">
+  <h2>出典</h2>
+  <ul class="note">
+    <li>地図・標高・道路の幅員区分・水域: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>（淡色地図・標高タイル・国土地理院最適化ベクトルタイル）を加工して使用</li>
+    <li>道路網・住所・交差点名: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors（ODbL）</li>
+    <li>冠水想定箇所: 国土交通省 北海道開発局・各地方整備局、内閣府 沖縄総合事務局「道路防災情報Webマップ」、関東地方整備局「道路冠水注意箇所マップ」、甲府河川国道事務所「山梨県内の道路冠水注意箇所」を本アプリが加工</li>
+    <li>精度の評価に使った図: 藤沢市 雨水出水浸水想定区域（3D都市モデル PLATEAU）、ハザードマップポータルサイトの内水浸水想定区域（平塚市・横須賀市・綾瀬市）</li>
+    <li>市区町村名: 国土数値情報（行政区域データ）（国土交通省）を加工して作成</li>
+  </ul>
+  <p class="note">プライバシーポリシーはアプリの画面（「プライバシーポリシー」）にあります。このページを開いても、外部へ情報は送りません。</p>
+</section>
+
+<footer>
+  <p>本アプリは実証実験のアプリで、国土地理院・国土交通省・各地方整備局等が作成・提供する公式のアプリではありません。掲載の数値は、公開データをもとに独自に算出したものです。</p>
+  <p><a class="back" href="./">← アプリに戻る</a></p>
+</footer>
+
+</div>
+</body>
+</html>

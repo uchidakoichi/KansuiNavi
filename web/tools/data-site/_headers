@@ -1,0 +1,11 @@
+# 配布データ用の Cloudflare Pages プロジェクトのヘッダ（2026-10-06）。アプリ本体とは別のプロジェクト。
+# ★同じヘッダ名を持つルールのパスを重ねない（一致した全ルールのヘッダを継承し、同名はカンマで連結される）。
+
+/*
+  # アプリ（別オリジン）から fetch で読むため。配布データはもともと誰でも取れる公開物なので * でよい
+  Access-Control-Allow-Origin: *
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  X-Content-Type-Options: nosniff
+  # 毎回確かめさせる（実際の再取得はアプリの Service Worker が抑える）
+  Cache-Control: public, max-age=0, must-revalidate

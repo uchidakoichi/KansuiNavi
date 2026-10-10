@@ -1,0 +1,33 @@
+# Cloudflare Pages のヘッダ設定（全国版）。藤沢版 web/public/_headers から移植（2026-10-02）。
+# ★同じヘッダ名を持つルールのパスを重ねない（一致した全ルールのヘッダを継承し、同名はカンマで連結される）。
+# ★splat（*）はルールにつき1つまで。
+
+/*
+  # 配布先 URL を地図タイル（gsi.go.jp）やリンク先へ渡さない。プライバシーポリシー（NK-15）とも揃える
+  Referrer-Policy: no-referrer
+  # PoC の間は検索エンジンに載せない（index.html の meta・robots.txt と三重に止める）
+  X-Robots-Tag: noindex, nofollow
+  X-Content-Type-Options: nosniff
+
+# 内容ハッシュ付きのファイルは永続でよい
+/assets/index-*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/router.worker-*
+  Cache-Control: public, max-age=31536000, immutable
+
+# ★maplibre-gl-worker.mjs / maplibre-gl-shared.mjs は固定名（T-13）。immutable にしない
+
+# 入口・SW・配布データは毎回確認させる（実際の再取得は Service Worker が抑える）。
+# ★入口の no-transform は T-24 の経緯で付けている（注入には効かなかったが害は無い）
+/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/data/*
+  Cache-Control: public, max-age=0, must-revalidate

@@ -1,0 +1,148 @@
+:root {
+  --bg: #ffffff; --fg: #1b2733; --muted: #5a6b79; --line: #d8dee4;
+  --accent: #1c6ea4; --alert: #8b1a4a; --warn: #a8600b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131a21; --fg: #e6edf3; --muted: #9fb0bf; --line: #2b3946;
+    --accent: #58a6dd; --alert: #e0699a; --warn: #e0a34a;
+  }
+}
+* { box-sizing: border-box; }
+
+/* ★★`hidden` を確実に効かせる。
+   `[hidden]` は UA スタイルの `display: none` でしかないので、
+   こちらで `display: grid` などを書くと**上書きされて閉じなくなる。**
+   2026-09-21 に実際に踏んだ: 免責のモーダルが「理解しました」で閉じず、
+   画面全体を覆ったまま何も操作できなかった。
+   ★開発機では気づけなかった。合成イベントを要素へ直接送っていたため、
+     **重なった要素の当たり判定を素通りしていた**（実機で初めて出た）。 */
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  color: var(--fg); background: var(--bg); display: flex; height: 100dvh;
+}
+#map { flex: 1 1 auto; min-width: 0; }
+#panel {
+  flex: 0 0 360px; max-width: 100%; overflow-y: auto; padding: 16px;
+  border-left: 1px solid var(--line); background: var(--bg);
+}
+@media (max-width: 760px) {
+  body { flex-direction: column; }
+  /* ★地図の高さを固定する。パネルを `auto` にすると中身の長さで地図が押しつぶされ、
+     iPhone で地図が画面の2割ほどになっていた（2026-10-07）。パネルは残りで自分だけスクロールする */
+  #map { flex: 0 0 60dvh; }
+  #panel { flex: 1 1 0; min-height: 0; border-left: none; border-top: 1px solid var(--line); }
+  /* ★出典は常時表示のまま（絶対ルール7）、字を小さくして地図を覆う面積を減らす */
+  .maplibregl-ctrl-attrib { font-size: 9.5px; line-height: 1.35; }
+  .maplibregl-ctrl-attrib-inner { max-width: calc(100vw - 16px); }
+}
+h1 { font-size: 1.1rem; margin: 0 0 4px; }
+.tag {
+  font-size: .7rem; font-weight: 400; margin-left: 8px; padding: 2px 6px;
+  border: 1px solid var(--line); border-radius: 999px; color: var(--muted);
+}
+.note { font-size: .78rem; color: var(--muted); margin: 4px 0 12px; line-height: 1.5; }
+.ctl label { display: flex; justify-content: space-between; font-size: .85rem; margin-top: 12px; }
+.ctl label span { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+.ctl input[type="range"] { width: 100%; }
+.chk { display: flex; gap: 8px; align-items: center; margin-top: 14px; font-size: .9rem; }
+.chk input { flex: 0 0 auto; }
+.status { font-size: .85rem; color: var(--muted); min-height: 1.2em; margin: 14px 0 8px; }
+.box {
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;
+}
+.box b { font-size: 1rem; }
+.box .sub { font-size: .85rem; color: var(--muted); margin-top: 4px; }
+.box .warn { font-size: .82rem; color: var(--warn); margin-top: 6px; line-height: 1.5; }
+.box.alert { border-color: var(--alert); }
+.box.stats table { width: 100%; font-size: .82rem; margin-top: 6px; border-collapse: collapse; }
+.box.stats th { text-align: left; font-weight: 400; color: var(--muted); padding: 2px 0; }
+.box.stats td { text-align: right; font-variant-numeric: tabular-nums; }
+.btn {
+  appearance: none; border: 1px solid var(--line); background: transparent; color: var(--fg);
+  border-radius: 8px; padding: 8px 14px; font-size: .9rem; cursor: pointer;
+}
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.legend { margin-top: 18px; font-size: .85rem; }
+.legend summary { cursor: pointer; color: var(--muted); }
+.legend p { line-height: 1.6; margin: 8px 0; }
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center;
+  z-index: 10; padding: 16px;
+}
+.modal .card {
+  background: var(--bg); border-radius: 12px; padding: 20px; max-width: 460px; max-height: 86dvh;
+  overflow-y: auto;
+}
+.modal ul { padding-left: 1.2em; line-height: 1.7; font-size: .9rem; }
+.modal li { margin-bottom: 6px; }
+/* ★リンクは既定の青のままだと暗い背景で読めない（NK-15 のリンクで気づいた） */
+.modal a, #panel a { color: var(--accent); }
+
+/* F-08 経路上の注意地点 */
+#hazards h3 { font-size: .95rem; margin: 14px 0 6px; }
+.hzlist { display: flex; flex-direction: column; gap: 6px; }
+.hzlist button {
+  appearance: none; text-align: left; background: transparent; color: var(--fg);
+  border: 1px solid var(--line); border-left-width: 4px; border-radius: 6px;
+  padding: 7px 10px; cursor: pointer; display: grid; gap: 2px; font: inherit;
+}
+.hzlist button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hzlist button.on { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.hzlist .hz-unknown { border-left-color: #3b4c5a; }
+.hzlist .hz-known { border-left-color: #8b1a4a; }
+/* ★地形推定は色だけで区別しない（本文の文言でも言い分ける） */
+.hzlist .hz-topo { border-left-color: #ef8a2b; border-left-style: dashed; }
+.hzlist .wh { font-size: .88rem; font-weight: 600; }
+.hzlist .rd { font-size: .8rem; color: var(--muted); }
+.hzlist .wt { font-size: .82rem; }
+.hzlist .mt { font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note.bad { color: var(--alert); }
+#locate { margin-top: 12px; }
+
+/* F-03 標高プロファイル */
+#profile { width: 100%; display: block; margin-top: 10px; }
+
+/* F-01 住所・交差点名の検索（藤沢版と同じ形） */
+#search-wrap { margin: 10px 0 4px; }
+#search { width: 100%; padding: 8px 10px; font: inherit; font-size: .85rem; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+#search:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+#search-out { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
+#search-out button { display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+  text-align: left; padding: 6px 8px; font: inherit; font-size: .82rem; color: var(--fg);
+  background: transparent; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+#search-out button:hover, #search-out button:focus-visible { border-color: var(--fg); }
+#search-out .mu { display: block; font-size: .72rem; color: var(--muted); }
+#search-out .k { font-size: .72rem; color: var(--muted); flex: none; }
+#search-none { font-size: .78rem; color: var(--muted); padding: 4px 2px; margin: 0; }
+/* NK-09 道路冠水注意箇所のポップアップ */
+.rkpop { font-size: .85rem; line-height: 1.55; color: #14202c; }
+.rkpop p { margin: 6px 0 0; }
+.rkpop .note { font-size: .78rem; color: #3b4c5a; }
+.rkpop a { color: #1c6ea4; }
+.rk-un li { margin-bottom: 6px; }
+/* ★地図の出典は地図（明るい背景）の上に出るので、ページの文字色（ダークモードでは明るい色）を継がせない。
+   ダークモードで出典が薄くて読めなかった（2026-10-07、iPhone で発覚） */
+.maplibregl-ctrl-attrib { background: rgba(255, 255, 255, .88) !important; color: #2b3640; }
+.maplibregl-ctrl-attrib a { color: #1c5f8f; }
+
+/* ★処理中の表示（地図の上・中央）。パネルは iPhone では画面外になりがちなので地図の上に出す */
+#busy {
+  position: fixed; z-index: 20; top: 12px; left: calc((100vw - 360px) / 2); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; max-width: min(92vw, 420px);
+  padding: 10px 16px; border-radius: 999px; background: rgba(20, 32, 44, .92); color: #fff;
+  font-size: .9rem; line-height: 1.4; box-shadow: 0 4px 18px rgba(0, 0, 0, .25);
+}
+@media (max-width: 760px) { #busy { left: 50%; } }
+#busy.nudge { animation: busy-nudge .5s; }
+@keyframes busy-nudge { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 6px)); } 75% { transform: translateX(calc(-50% + 6px)); } }
+.spin {
+  flex: none; width: 16px; height: 16px; border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin, #busy.nudge { animation: none; } }

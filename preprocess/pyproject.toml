@@ -1,0 +1,57 @@
+[project]
+name = "kansui-national-preprocess"
+version = "0.1.0"
+description = "冠水回避ルート検索アプリ 全国版 前処理バッチ"
+requires-python = ">=3.13,<3.14"
+
+# 依存の追加は `uv add <pkg>` で行い、ここを直接編集しない。
+# ★藤沢版（../../Kansui/preprocess/pyproject.toml）を写したうえで、
+#   全国版で要るものだけ足している。**藤沢版と食い違わせない。**
+dependencies = [
+    # --- 数値・画像 ---
+    "numpy",
+    "pillow",          # DEM は PNG 形式のみ（T-08 の復号）
+    # --- 地理空間 ---
+    "shapely",
+    "geopandas",
+    "pyproj",          # ★全国版は 19系（EPSG:6669〜6687）を切り替える（src/kansui/crs.py）
+    "rasterio",
+    # ★ fiona は絶対に追加しないこと（藤沢版と同じ。pyogrio と GDAL 版が食い違う）
+    # --- グラフ・経路 ---
+    "networkx",
+    # --- 数値解析（Δh の近傍最小値フィルタ。T-12 の八角形近似） ---
+    "scipy",
+    # --- 取得・設定 ---
+    "requests",
+    "pyyaml",
+    "tqdm",
+    "pyrosm>=0.13.1",
+    "pyarrow>=25.0.1",
+    # --- ★全国版で新たに要るもの ---
+    # 国土地理院 最適化ベクトルタイル（.pbf）の復号。全国の幅員区分・
+    # トンネル/橋・階層順を読むのに使う（調査文書 §1）
+    "mapbox-vector-tile>=2.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "pytest",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kansui"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>冠水回避ルート検索（全国版・実証実験）</title>
+    <link rel="stylesheet" href="/node_modules/maplibre-gl/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <!-- F-10 免責。★同意を取るまで使わせない（絶対ルール8） -->
+    <div id="disclaimer" class="modal" hidden>
+      <div class="card">
+        <h1>はじめにお読みください</h1>
+        <ul>
+          <li>これは<b>実証実験</b>です。公式な避難誘導や通行可否の判断を行うものではありません。</li>
+          <li>示すのは「安全な経路」ではなく、<b>静的なデータ上、相対的にリスクが低いと推定される経路</b>です。</li>
+          <li>実際の降雨状況・通行止め・道路状況は<b>反映していません</b>。</li>
+          <li>★<b>表示のない区域にも冠水リスクがあります。</b></li>
+          <li>最終的な通行の判断は、現地の状況に基づいてご自身で行ってください。</li>
+          <li>★<b>冠水した道路には絶対に進入しないでください。</b></li>
+          <!-- NK-09（2026-09-28・利用者判断）: 道路冠水想定箇所の免責。★既に同意した人に出し直さない -->
+          <li class="nk09" hidden>本アプリで表示する<b>冠水想定箇所</b>は、国土交通省の各地方整備局等が公表しているデータ（道路防災情報Webマップ）と各道路管理者の公表資料をもとに、<b>本アプリが加工して</b>表示しています（関東の一部は資料の地図から位置を推定）。
+            実際の道路状況や気象条件により、掲載箇所以外でも冠水が発生する可能性があります。
+            通行の際は現地の案内や規制情報に従い、利用者の責任においてご利用ください。</li>
+        </ul>
+        <p class="note">利用者の情報の取扱いは、画面の「<a href="#privacy" id="privacy-link">プライバシーポリシー</a>」に書いています
+          （出発地・目的地・入力した住所は端末の外へ送りません）。</p>
+        <button id="agree" class="btn primary">理解しました</button>
+      </div>
+    </div>
+
+    <div id="map"></div>
+    <!-- ★処理中の表示（2026-10-08）。外出先の遅い回線で「動いていない」と思って何度もタップされないよう、地図の上に出す -->
+    <div id="busy" role="status" aria-live="polite" hidden><span class="spin" aria-hidden="true"></span><span id="busy-text"></span></div>
+
+    <aside id="panel">
+      <h1>冠水回避ルート検索<span class="tag">全国版・実証実験</span></h1>
+      <p id="region" class="note"></p>
+
+      <div class="ctl">
+        <label for="depth">雨の強さ<span id="depth-v"></span></label>
+        <!-- ★★step を刻まない。校正点（湛水深 1.407m）は 0.05 刻みに乗らないので、
+             既定値を入れると 1.40 に丸められ、**校正点そのものを選べなくなる**。
+             表示も「強」ではなく「中」になっていた（2026-09-22 実機で確認）。
+             ★この目盛りは mm/h ではなく相対表示なので、連続で差し支えない。 -->
+        <input id="depth" type="range" min="0.2" max="2.0" step="any" />
+        <p class="note">★mm/h の目盛りにはしていません（校正点が1つしかなく、予報と誤読されるため）。</p>
+
+        <label for="lambda">リスクをどれだけ避けるか<span id="lambda-v"></span></label>
+        <input id="lambda" type="range" min="0" step="1" />
+
+        <label for="mu">広い道を優先<span id="mu-v"></span></label>
+        <input id="mu" type="range" min="0" max="4" step="0.5" />
+        <p class="note">★上げるほど幹線を通ります。幹線ほど立体交差の下を通るため、<b>判定不能の通過が増えることがあります</b>。</p>
+
+        <label class="chk"><input id="avoid" type="checkbox" />検出できたアンダーパスを除外する</label>
+        <p class="note">ほかに道が無いとき（出発地・目的地がアンダーパスの向こうにしか出られない場所など）だけ通り、その数を表示します。</p>
+      </div>
+
+      <!-- F-09 ★利用者が押したときだけ新版へ交代する。勝手に切り替えない -->
+      <button id="update" class="btn primary" hidden>新しいデータに更新</button>
+      <!-- ★オフラインが使えない環境ではその旨を出す（黙って機能を落とさない） -->
+      <p id="swnote" class="note" hidden></p>
+
+      <!-- F-01 住所・交差点名の検索（NK-12: OSM を同梱して端末内で引く。外部のジオコーダを呼ばない） -->
+      <div id="search-wrap">
+        <input id="search" type="search" autocomplete="off"
+          placeholder="住所・交差点名で探す（例: 藤沢市 羽鳥五丁目）"
+          aria-label="住所・交差点名で探す" aria-controls="search-out" />
+        <div id="search-out" role="listbox"></div>
+        <p class="note">町丁目・大字と信号交差点名で探せます（<b>番地・よみがなでは探せません</b>）。
+          同じ名前が多いときは市区町村名を前に付けてください。
+          収録は OpenStreetMap にあるものだけで、網羅していません。
+          データは端末内にあり、入力内容はどこへも送信しません。
+          出典: © OpenStreetMap contributors ／ 市区町村名は「国土数値情報（行政区域データ）」（国土交通省）を加工して作成</p>
+      </div>
+
+      <!-- F-01 現在地。★位置情報は端末内でのみ使い、送信も保存もしない -->
+      <button id="locate" class="btn" hidden>現在地を使う</button>
+      <p id="locate-msg" class="note" role="status" hidden></p>
+
+      <p id="status" class="status"></p>
+      <!-- ★地図側の失敗をここに出す（真っ白のまま黙って壊れないように） -->
+      <div id="maperr"></div>
+      <div id="out"></div>
+      <!-- F-08 経路上の注意地点 -->
+      <div id="hazards"></div>
+      <!-- F-03 経路の標高プロファイル -->
+      <canvas id="profile" height="150" hidden></canvas>
+      <p id="profile-note" class="note" hidden></p>
+      <button id="clear" class="btn">経路をやり直す</button>
+
+      <!-- 考え方・計算方法の解説（public/guide.html。外部のフォント・スクリプトを読まない） -->
+      <p class="note"><a href="guide.html" target="_blank" rel="noopener">このアプリの考え方と計算方法（詳しい説明）</a></p>
+
+      <details class="legend">
+        <summary>この地図について</summary>
+        <p>★<b>「安全」ではありません。</b>地形データから推定した相対的なリスクです。</p>
+        <p>★<b>黄〜赤の線</b>は、地形から推定した<b>まわりより低い道</b>です（「雨の強さ」の閾値を超えた区間）。
+          <b>経路を引いたときに読み込んだ範囲（経路の周り数km）だけ</b>に薄く重ねます。全国を一度には出せないため、それ以外の場所には出ません。
+          提案する経路の線にも同じ色が付きますが、経路は既定でこれを避けるので、<b>経路の線はほとんど青</b>になります。</p>
+        <p>★<b>濃い灰色の線</b>は<b>地形から判断できない</b>区間です。4段階の色に混ぜていません。
+          内訳は<b>アンダーパス・高架下</b>（立体交差の下は標高データが橋の路面を測るため）と、
+          <b>標高データから採点できなかった区間</b>の2つです。
+          ★<b>「判断できない」であって「安全」ではありません。</b></p>
+        <p>★<b>標高データの精度は地域で違います。</b>多くの地域は 5m メッシュ（誤差の目安 0.3〜1.4m）ですが、
+          整備されていない地域（北海道・東北・奄美・沖縄の一部など）は <b>10m メッシュ（誤差の目安 5m）</b>で推定しています。
+          その区間は注意地点の一覧に「精度の低い10mメッシュの標高からの推定」と出し、標高プロファイルでは細かい点線で示します。
+          ★数 m の窪みは誤差に埋もれることがあります。</p>
+        <p>★<b>破線の灰色</b>は最速の経路（比較用）です。色だけで区別していません。</p>
+        <p>★<b>赤い破線</b>は<b>道路データのある範囲</b>の外周です（道路から約1km 四方の単位で描いています）。
+          この外では経路を引けません。★山地など、対象の県の中でも道路の無い一帯は外に出ます。</p>
+        <p>★<b>細い破線の四角</b>は読み込んだ区画です。経路に要る範囲だけを読んでいます。</p>
+        <p>★<b>オフラインでも開きます。</b>一度読み込んだ区画と地図は端末に残ります。
+          ただし<b>読んでいない区画へは経路を引けません</b>（通信が要ります）。</p>
+        <p class="note">出典：国土地理院（淡色地図・標高タイル・国土地理院最適化ベクトルタイルを加工して使用）／
+          © OpenStreetMap contributors (ODbL)</p>
+      </details>
+
+      <!-- NK-09: データの出典と利用条件。★国や地方整備局の公式アプリと誤認させない（PDL1.0 の条件） -->
+      <!-- NK-09: 道路冠水注意箇所の一覧（データを配っているときだけ。roadkansui.ts が埋める） -->
+      <details class="legend" id="rk-list" hidden></details>
+
+      <details class="legend" id="credits">
+        <summary>データの出典と利用条件</summary>
+        <p>本アプリは<b>実証実験のアプリ</b>で、国土地理院・国土交通省・各地方整備局等が作成・提供する
+          <b>公式のアプリではありません</b>。以下のデータを加工して表示しています。</p>
+        <ul class="note">
+          <li>地図・標高・道路の幅員区分: 出典：<a href="https://maps.gsi.go.jp/development/ichiran.html"
+            target="_blank" rel="noopener">国土地理院</a>（淡色地図・標高タイル・国土地理院最適化ベクトルタイル）。
+            本アプリが加工して使用しています。</li>
+          <li>道路網・住所・交差点名: © <a href="https://www.openstreetmap.org/copyright" target="_blank"
+            rel="noopener">OpenStreetMap</a> contributors（ODbL）。</li>
+          <li>住所検索の都道府県名・市区町村名: 「国土数値情報（行政区域データ）」（国土交通省）を加工して作成
+            （<a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">国土数値情報ダウンロードサイト</a>）。</li>
+          <li class="nk09" hidden>冠水想定箇所: 出典：国土交通省 東北・北陸・中部・近畿・中国・四国・九州地方整備局、内閣府 沖縄総合事務局
+            「道路防災情報Webマップ」（冠水想定箇所・説明表）。各サイトの利用規約（公共データ利用規約 第1.0版）に基づき、
+            本アプリが加工して表示しています。<br>道路冠水注意箇所（関東）: 出典：国土交通省 関東地方整備局「道路冠水注意箇所マップ」
+            （東京都 令和8年6月15日時点・神奈川県 令和8年6月1日作成・栃木県 令和8年6月1日更新・茨城県 令和8年9月8日更新・千葉県 令和8年6月30日更新）、
+            甲府河川国道事務所「山梨県内の道路冠水注意箇所」（令和6年8月1日時点）。
+            <b>座標は公表されておらず、本アプリが資料の地図から位置を推定</b>して加工・表示しています。国・自治体の公式な情報ではありません。
+            地図の印を押すと、元の資料の該当ページと確かめ方を示します。
+            ★掲載箇所以外でも冠水は発生します。通行の際は現地の案内や規制情報に従ってください。</li>
+        </ul>
+      </details>
+
+      <!-- NK-15（2026-10-02）: プライバシーポリシー。★実装が送っている通信だけを書く（docs/プライバシーポリシー_草案.md）。
+           ★外部へ情報を送る機能を足すときは、先にここを改定する -->
+      <details class="legend" id="privacy">
+        <summary>プライバシーポリシー</summary>
+        <p>冠水回避ルート検索 実証実験チーム（以下「運営者」）は、本アプリにおける利用者の情報の取扱いを次のとおり定めます。</p>
+        <p><b>1. 運営者が取得する情報</b><br />
+          運営者は、本アプリを通じて利用者の個人情報を取得・保存しません。アクセス解析の仕組みも入れていません。</p>
+        <p><b>2. 端末の中だけで扱う情報</b><br />
+          出発地・目的地、現在地（「現在地を使う」を押したときだけ取得し、保存しません）、
+          住所・交差点名の検索欄に入力した内容は、端末の中だけで扱い、運営者を含む外部へ送信しません。</p>
+        <p><b>3. 端末に保存する情報</b><br />
+          免責事項に同意したことの記録と、一度読み込んだ道路データ・地図の画像（オフラインで使うため）を端末に保存します。
+          ブラウザのサイトデータを消去すると削除されます。</p>
+        <p><b>4. 外部のサーバへの通信</b><br />
+          動作のために次の通信を行います。ブラウザの仕組み上、<b>利用者の IP アドレス、閲覧した地図の範囲、
+          経路に必要な道路データの範囲</b>が各事業者に届きます。運営者はこれらの記録を取得していません。
+          各事業者での取扱いは、それぞれの方針によります。</p>
+        <ul class="note">
+          <li>国土地理院（地図の画像の取得）: <a href="https://www.gsi.go.jp/GSI/puraibasi-porisi.htm"
+            target="_blank" rel="noopener">国土地理院 プライバシーポリシー</a></li>
+          <li>Cloudflare, Inc.（本アプリと道路データの配信）: <a href="https://www.cloudflare.com/privacypolicy/"
+            target="_blank" rel="noopener">Cloudflare's Privacy Policy</a></li>
+        </ul>
+        <p><b>5. 改定</b><br />必要に応じて改定し、本アプリ内に掲示します。外部へ情報を送る機能を追加するときは、その前に改定します。</p>
+        <p><b>6. お問い合わせ</b><br />X（旧 Twitter）のダイレクトメッセージ:
+          <a href="https://x.com/uchidakoichi" target="_blank" rel="noopener">@uchidakoichi</a></p>
+        <p class="note">制定日: 2026年10月7日</p>
+      </details>
+    </aside>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,1061 @@
+# =============================================================================
+# 冠水回避ルート検索アプリ 全国版 ── 前処理の設定
+#
+# ★絶対ルール4: 重み・閾値・パラメータは全てここに外出しする。コードに直書きしない。
+# ★絶対ルール10: 未確定値を推測で埋めない。`null` ＋ TODO コメントで置く。
+#   `null` のまま `Config.require()` で読むと**落ちる**。それが仕組みとして正しい。
+#
+# ★藤沢版（../../Kansui/preprocess/config.yaml）との関係:
+#   決定済みの値は根拠ごと引き継ぐ。**他地域での妥当性は未検証**のものが多いので、
+#   引き継いだ値には「藤沢の実測で決めた」と明記してある。
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# regions ── ★ここが「引数」。地域を足せば別の地域を流せる
+#
+# 藤沢版は団体コード `14205` と `EPSG:6677` をコードに直書きしていた
+# （実測: 6677 が 19ファイル・66行／14205 が 1ファイル・5行）。
+# 全国版はここから引き当てる（src/kansui/region.py, src/kansui/crs.py）。
+# -----------------------------------------------------------------------------
+regions:
+  # ★★地域ごとに作り、**書き出しで全国を1つにまとめる**（2026-09-23 に作りを変えた）。
+  #   各地域の作成（build_region.py）は「エッジごとの最終表」を
+  #   `data/raw/final/{地域}.parquet` に書くところまで。
+  #   巨大強連結成分・最高速度・道路名の表は**全体で1つに決まる値**なので、
+  #   ★地域ごとには決めない。`tools/export_national.py` が全地域を合わせてから決める。
+  #   （以前の注記「別々に作って後で合わせる形にしない」の懸念は、これで解消した）
+  #
+  # ★地域の選び方: 環境変数 `KANSUI_REGION=<名前>`。**既定の地域は持たない**。
+  # ★1地域の大きさは**メモリで決まる**（16GB）。東京都＋神奈川県（208万エッジ）が実績の上限。
+  #   県単位を基本にする。
+  #
+  # ★都道府県コード（JIS X 0401）は**必ず引用符付きの2桁文字列**にする。
+  #   引用符が無いと YAML が数値として読み、"01"（北海道）が 1 になって
+  #   先頭の 0 が落ちる。T-16（`0466251111` が8進数で 81351241 になった）と同じ筋。
+  #   → `region.Region` は型が str であることを必須にしている。**緩めないこと。**
+  tokyo_kanagawa:
+    # ★2026-09-23、神奈川県 → **東京都＋神奈川県**に広げた（利用者の依頼:
+    #   「神奈川圏外のルート検索ができない」）。
+    # ★画面に出す対象範囲の名前。範囲の外をタップしたときの説明に使う
+    label: "東京都（島しょ部を除く）・神奈川県"
+
+    pref_codes: ["13", "14"]  # 東京都・神奈川県
+
+    # 更に市町村で絞る場合（5桁の団体コード・文字列）。県全域なら null
+    municipality_codes: null
+
+    # ★外す市町村（5桁の団体コード・文字列）。東京都の**島しょ部**を外す。
+    #   本土と道路でつながらず、含めると区画・DEM・幅員タイルが数百km先まで飛び地で広がる。
+    #   ★コードは N03（2026年版）から**緯度で**確かめた（2026-09-23）。
+    #     9団体とも代表点が北緯 34.80度以下、本土の最南（町田市）は 35.56度で、はっきり離れている。
+    #     ★N03_002（支庁）はこの版では空で、それでは判別できなかった。
+    exclude_municipality_codes:
+      # ★★「所属未定地」（都道府県コード＋000）。これを外し忘れると、
+      #   **鳥島・孀婦岩（北緯 29.79度）まで範囲が伸びた**（2026-09-23 に実測）。
+      #   123件のうち本土側（東京湾の埋立地）は 3件で、**3件とも +3km バッファの内側**に
+      #   入ることを確かめた ＝ 外しても湾内の道路は落ちない。
+      - "13000"   # 所属未定地 29.79〜35.65
+      - "13361"   # 大島町     34.80
+      - "13362"   # 利島村     34.53
+      - "13363"   # 新島村     34.48
+      - "13364"   # 神津島村   34.25
+      - "13381"   # 三宅村     34.12
+      - "13382"   # 御蔵島村   33.90
+      - "13401"   # 八丈町     33.16
+      - "13402"   # 青ヶ島村   32.47
+      - "13421"   # 小笠原村   27.74
+
+    # メッシュを直接指定する場合（北海道の「系の境界の帯」など）。文字列の配列
+    mesh_codes: null
+
+    # 経路確保のための外側バッファ［km］。★藤沢版は 3.0 だった。
+    #   県単位ではこの意味が変わる（隣県へはみ出す）ので Phase 1 で見直す
+    buffer_km: 3.0
+
+  saitama:
+    label: "埼玉県"
+    pref_codes: ["11"]   # 埼玉県
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+
+  chiba:
+    label: "千葉県"
+    pref_codes: ["12"]   # 千葉県
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+
+  ibaraki:
+    label: "茨城県"
+    pref_codes: ["08"]   # 茨城県
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+
+  tochigi:
+    label: "栃木県"
+    pref_codes: ["09"]   # 栃木県
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+
+  gunma:
+    label: "群馬県"
+    pref_codes: ["10"]   # 群馬県
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+
+  # ---------------------------------------------------------------------------
+  # ★以下は tools/gen_regions.py が N03（2026年版）と Geofabrik の範囲ポリゴンから作った
+  #   （2026-09-23）。★平面直角座標系が1つに決まらない県は系ごとに分けてある（NK-08）。
+  #   ★北海道の 01695〜01700 は OSM の日本の抽出の範囲外（道路データが無い）なので外す。
+  #   ★osm_extract は Geofabrik の地方（代表点の過半数が範囲に入る地方）。
+  # ---------------------------------------------------------------------------
+  hokkaido_z11:
+    label: "北海道（11系）"
+    pref_codes: ["01"]
+    # ★平面直角座標系 11 系の市区町村（42 件）。NK-08
+    municipality_codes: ["01202", "01203", "01233", "01236", "01331", "01332", "01333", "01334", "01337", "01343", "01345", "01346", "01347", "01361", "01362", "01363", "01364", "01367", "01370", "01371", "01391", "01392", "01393", "01394", "01395", "01396", "01397", "01398", "01399", "01400", "01401", "01402", "01403", "01404", "01405", "01406", "01407", "01408", "01409", "01571", "01575", "01584"]
+    # ★外す: 3km より離れた所属未定地／OSM の抽出の範囲外の区域
+    exclude_municipality_codes: ["01695", "01696", "01697", "01698", "01699", "01700"]
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: hokkaido
+  hokkaido_z12:
+    label: "北海道（12系）"
+    pref_codes: ["01"]
+    # ★平面直角座標系 12 系の市区町村（96 件）。NK-08
+    municipality_codes: ["01101", "01102", "01103", "01104", "01105", "01106", "01107", "01108", "01109", "01110", "01204", "01205", "01209", "01210", "01212", "01213", "01214", "01215", "01216", "01217", "01218", "01220", "01221", "01222", "01224", "01225", "01226", "01227", "01228", "01229", "01230", "01231", "01234", "01235", "01303", "01304", "01423", "01424", "01425", "01427", "01428", "01429", "01430", "01431", "01432", "01433", "01434", "01436", "01437", "01438", "01452", "01453", "01454", "01455", "01456", "01457", "01458", "01459", "01460", "01461", "01462", "01463", "01464", "01465", "01468", "01469", "01470", "01471", "01472", "01481", "01482", "01483", "01484", "01485", "01486", "01487", "01511", "01512", "01513", "01514", "01516", "01517", "01518", "01519", "01520", "01578", "01581", "01585", "01586", "01601", "01602", "01604", "01607", "01608", "01609", "01610"]
+    # ★外す: 3km より離れた所属未定地／OSM の抽出の範囲外の区域
+    exclude_municipality_codes: ["01695", "01696", "01697", "01698", "01699", "01700"]
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: hokkaido
+  hokkaido_z13:
+    label: "北海道（13系）"
+    pref_codes: ["01"]
+    # ★平面直角座標系 13 系の市区町村（50 件）。NK-08
+    municipality_codes: ["01206", "01207", "01208", "01211", "01219", "01223", "01543", "01544", "01545", "01546", "01547", "01549", "01550", "01552", "01555", "01559", "01560", "01561", "01562", "01563", "01564", "01631", "01632", "01633", "01634", "01635", "01636", "01637", "01638", "01639", "01641", "01642", "01643", "01644", "01645", "01646", "01647", "01648", "01649", "01661", "01662", "01663", "01664", "01665", "01667", "01668", "01691", "01692", "01693", "01694"]
+    # ★外す: 3km より離れた所属未定地／OSM の抽出の範囲外の区域
+    exclude_municipality_codes: ["01695", "01696", "01697", "01698", "01699", "01700"]
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: hokkaido
+  aomori:
+    label: "青森県"
+    pref_codes: ["02"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: tohoku
+  iwate:
+    label: "岩手県"
+    pref_codes: ["03"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: tohoku
+  miyagi:
+    label: "宮城県"
+    pref_codes: ["04"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: tohoku
+  akita:
+    label: "秋田県"
+    pref_codes: ["05"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: tohoku
+  yamagata:
+    label: "山形県"
+    pref_codes: ["06"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: tohoku
+  fukushima:
+    label: "福島県"
+    pref_codes: ["07"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: tohoku
+  niigata:
+    label: "新潟県"
+    pref_codes: ["15"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  toyama:
+    label: "富山県"
+    pref_codes: ["16"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  ishikawa:
+    label: "石川県"
+    pref_codes: ["17"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  fukui:
+    label: "福井県"
+    pref_codes: ["18"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  yamanashi:
+    label: "山梨県"
+    pref_codes: ["19"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  nagano:
+    label: "長野県"
+    pref_codes: ["20"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  gifu:
+    label: "岐阜県"
+    pref_codes: ["21"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  shizuoka:
+    label: "静岡県"
+    pref_codes: ["22"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  aichi:
+    label: "愛知県"
+    pref_codes: ["23"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chubu
+  mie:
+    label: "三重県"
+    pref_codes: ["24"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kansai
+  shiga:
+    label: "滋賀県"
+    pref_codes: ["25"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kansai
+  kyoto:
+    label: "京都府"
+    pref_codes: ["26"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kansai
+  osaka:
+    label: "大阪府"
+    pref_codes: ["27"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kansai
+  hyogo:
+    label: "兵庫県"
+    pref_codes: ["28"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kansai
+  nara:
+    label: "奈良県"
+    pref_codes: ["29"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kansai
+  wakayama:
+    label: "和歌山県"
+    pref_codes: ["30"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kansai
+  tottori:
+    label: "鳥取県"
+    pref_codes: ["31"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chugoku
+  shimane:
+    label: "島根県"
+    pref_codes: ["32"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chugoku
+  okayama:
+    label: "岡山県"
+    pref_codes: ["33"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chugoku
+  hiroshima:
+    label: "広島県"
+    pref_codes: ["34"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chugoku
+  yamaguchi:
+    label: "山口県"
+    pref_codes: ["35"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: chugoku
+  tokushima:
+    label: "徳島県"
+    pref_codes: ["36"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: shikoku
+  kagawa:
+    label: "香川県"
+    pref_codes: ["37"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: shikoku
+  ehime:
+    label: "愛媛県"
+    pref_codes: ["38"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: shikoku
+  kochi:
+    label: "高知県"
+    pref_codes: ["39"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: shikoku
+  fukuoka:
+    label: "福岡県"
+    pref_codes: ["40"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  saga:
+    label: "佐賀県"
+    pref_codes: ["41"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  nagasaki:
+    label: "長崎県"
+    pref_codes: ["42"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  kumamoto:
+    label: "熊本県"
+    pref_codes: ["43"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  oita:
+    label: "大分県"
+    pref_codes: ["44"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  miyazaki:
+    label: "宮崎県"
+    pref_codes: ["45"]
+    municipality_codes: null
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  kagoshima_z01:
+    label: "鹿児島県（1系）"
+    pref_codes: ["46"]
+    # ★平面直角座標系 1 系の市区町村（13 件）。NK-08
+    municipality_codes: ["46222", "46304", "46523", "46524", "46525", "46527", "46529", "46530", "46531", "46532", "46533", "46534", "46535"]
+    # ★外す: 3km より離れた所属未定地／OSM の抽出の範囲外の区域
+    exclude_municipality_codes: ["46000"]
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  kagoshima_z02:
+    label: "鹿児島県（2系）"
+    pref_codes: ["46"]
+    # ★平面直角座標系 2 系の市区町村（30 件）。NK-08
+    municipality_codes: ["46201", "46203", "46204", "46206", "46208", "46210", "46213", "46214", "46215", "46216", "46217", "46218", "46219", "46220", "46221", "46223", "46224", "46225", "46303", "46392", "46404", "46452", "46468", "46482", "46490", "46491", "46492", "46501", "46502", "46505"]
+    # ★外す: 3km より離れた所属未定地／OSM の抽出の範囲外の区域
+    exclude_municipality_codes: ["46000"]
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  okinawa_z15:
+    label: "沖縄県（15系）"
+    pref_codes: ["47"]
+    # ★平面直角座標系 15 系の市区町村（35 件）。NK-08
+    municipality_codes: ["47000", "47201", "47205", "47208", "47209", "47210", "47211", "47212", "47213", "47215", "47301", "47302", "47303", "47306", "47308", "47311", "47313", "47314", "47315", "47324", "47325", "47326", "47327", "47328", "47329", "47348", "47350", "47353", "47354", "47355", "47356", "47359", "47360", "47361", "47362"]
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  okinawa_z16:
+    label: "沖縄県（16系）"
+    pref_codes: ["47"]
+    # ★平面直角座標系 16 系の市区町村（5 件）。NK-08
+    municipality_codes: ["47207", "47214", "47375", "47381", "47382"]
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+  okinawa_z17:
+    label: "沖縄県（17系）"
+    pref_codes: ["47"]
+    # ★平面直角座標系 17 系の市区町村（2 件）。NK-08
+    municipality_codes: ["47357", "47358"]
+    exclude_municipality_codes: null
+    mesh_codes: null
+    buffer_km: 3.0
+    osm_extract: kyushu
+# -----------------------------------------------------------------------------
+# national ── 配布データにまとめる地域（★この順に読み、同じエッジは先勝ち）
+#   ★作り終えた地域だけを並べる。並べた地域の最終表が無ければ書き出しは落ちる。
+# -----------------------------------------------------------------------------
+national:
+  # ★配布している地域（2026-09-27 に全国 51 地域がそろった）。index.json の regions と同じ並び
+  regions: [
+    tokyo_kanagawa, saitama, chiba, ibaraki, tochigi, gunma, yamanashi, shizuoka, nagano,
+    niigata, fukushima, miyagi, yamagata, iwate, akita, aomori, aichi, gifu, toyama, ishikawa,
+    fukui, mie, shiga, kyoto, osaka, nara, wakayama, hyogo, okayama, tottori, hiroshima,
+    shimane, yamaguchi, kagawa, tokushima, ehime, kochi, fukuoka, saga, nagasaki, kumamoto,
+    oita, miyazaki, kagoshima_z02, okinawa_z15, hokkaido_z11, hokkaido_z12, hokkaido_z13,
+    kagoshima_z01, okinawa_z16, okinawa_z17
+  ]
+  # ★作成を始める前に要る空き容量［GB］。下回ったら連鎖を止める（黙ってディスクを埋めない）。
+  #   1県で タイルのキャッシュ 約1〜2GB ＋ 中間生成物 約1GB（東京都＋神奈川県の実測から）。
+  min_free_gb: 15
+  # ★画面に出す対象範囲の名前は、各地域の label を「・」でつないで作る（手で書くと足し忘れる）
+  # ★作成を流しながら広げるときは環境変数 KANSUI_NATIONAL_REGIONS=a,b,c で上書きできる
+
+# -----------------------------------------------------------------------------
+# connectivity ── 道路網の連結成分（起終点の寄せと「つながっていない」判定）
+# -----------------------------------------------------------------------------
+connectivity:
+  # ★この大きさ（ノード数）以上の強連結成分に番号を振る。未満は「断片」として寄せ先にしない。
+  #   ★全国では本州・北海道・沖縄・離島が別々の成分になる（道路でつながらない）。
+  #     最大の1つだけにすると、北海道や島では経路が一度も引けない（2026-09-23 のレビュー）。
+  #   ★寄せは「1km 以内で最も大きい成分のノード」なので、本州で寄せる先は従来と変わらない。
+  #   実測（東京・神奈川＋埼玉、除外なし）: 最大 2,870,107 の次は 398・224・223・99…
+  #     30 以上は 38 成分、100 以上は 4 成分。小さな有人島の中でも引けるよう 30 にする。
+  min_component_nodes: 30
+
+# -----------------------------------------------------------------------------
+# coverage ── 対象範囲（道路データのある範囲）の描き方
+# -----------------------------------------------------------------------------
+coverage:
+  # ★範囲の形は**道路（OSM）から**作る。行政区域（N03）の形は配らない。
+  #   N03 は「測量法に基づく国土地理院長承認（複製）」の上に成り立ち、
+  #   二次利用に国土地理院への申請が要る場合があると公式ページが明記している
+  #   （https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2026.html・2026年版・2026-09-23 確認）。
+  #
+  # 閉じ処理の半径［3次区画＝約1km］。道路と道路の間の小さな切れ込みを埋めて外周を均す。
+  #   実測（神奈川・2026-09-23）: 外周の辺 k=0 558 / k=1 458 / **k=2 420** / k=3 394。
+  #   検査点（藤沢駅・横浜駅＝内／新宿・渋谷・相模湾の沖＝外）は k=0〜3 で全て変わらない。
+  #   ★丹沢山の山頂は k によらず「外」。道路の無い一帯が県境まで続く**入り江**だから。
+  #     「道路データが無い」という事実なので、画面の文言をそれに合わせてある。
+  closing_cells: 2
+
+# -----------------------------------------------------------------------------
+# split ── 地域をどう分けて配るか（NK-06 / P-2）
+# -----------------------------------------------------------------------------
+split:
+  # 標準地域メッシュのレベル。2 = 第2次地域区画（およそ10km四方）
+  #   根拠: 昭和48年7月12日行政管理庁告示第143号
+  #   ★全国で番号体系が定義済みで、県境にも平面直角座標系の境界にも依存しない
+  level: 2
+
+  # 配信側の上限。★これは**外から与えられた値**であり、こちらで決める閾値ではない
+  #   Cloudflare Pages（Free）2026-09-05 時点
+  max_file_bytes: 26214400       # 25 MiB
+  max_files: 20000               # ★自前配信フォントだけで既に 379 使う
+
+  # ★★P-7（2026-09-20）で分かったこと: 「経路の周りを何リング先読みするか」という
+  #   立て方が間違っていた。**探索が触った区画だけを、触ったときに足す**のが正しい。
+  #   A* の探索は目的地方向に伸びるので、リングでは表せない形になる。
+  #   → `route_rings` という設定項目は**不要**。削除した。
+  #
+  #   実測（神奈川県・A*・gz は実データ相当に補正）:
+  #     短 2-5km    1本目 2区画 1.2MB → 2本目 0.6MB → 3本目 0
+  #     中 5-15km   1本目 4区画 2.1MB → 2本目 **0**
+  #     長 15-40km  1本目14区画 7.4MB → 2本目 1.0MB
+  #   ★区画はキャッシュされるので、同じ地域で使い続ける利用者は初回だけ払う。
+  #     藤沢版は初回 2.12MB で市域全部が使えた。中距離ならそれとほぼ同じ。
+
+# -----------------------------------------------------------------------------
+# crs ── 座標系
+#
+# ★平面直角座標系（19系）は地域から**引き当てる**。ここに EPSG を直書きしない。
+#   根拠: 平面直角座標系（平成十四年国土交通省告示第九号）
+#         最終改正 平成二十二年三月三十一日国土交通省告示第二百八十九号
+#         https://www.gsi.go.jp/LAW/heimencho.html
+#
+# ★T-10 を19系に一般化: EPSG:6669〜6687 の軸順は northing, easting（X=北, Y=東）で
+#   GIS 一般の easting-first と逆。pyproj では always_xy=True を明示する。
+#   また 2025年4月に名称が JGD2011 → JGD2024 に変わった（定義・座標値は不変）。
+#   **CRS を名前で比較せず EPSG コードで比較する。**
+#
+# ★NK-08（系の境界をまたぐ区画）は **北海道だけの問題**と判明した（2026-09-20）。
+#   他の「複数系にまたがる県」は分かれ目がすべて海上で、道路がまたがない。
+# -----------------------------------------------------------------------------
+crs:
+  geographic: "EPSG:6668"        # JGD2011 地理座標。OSM/タイルとの受け渡し
+  web_mercator: "EPSG:3857"      # ★表示とタイル格子だけ。距離計算に使わない（T-05）
+
+  # 区画が系の境界をまたいだときの扱い。★未決（NK-08）。Phase 2 で決める
+  straddling_mesh_policy: null   # TODO: "center" / "split" / "both" のいずれか
+
+# -----------------------------------------------------------------------------
+# tiles ── タイル取得の自主基準（絶対ルール3）
+#
+# ★レート上限は公式に存在しない。規約にあるのは「サーバに負荷を与える通信は
+#   予告なくアクセス遮断する場合がある」という免責のみ。
+#   よってこれは **PoC 側の自主基準**として明示的に置く値。
+#
+# ★★2026-09-26 見直し（利用者判断）: sleep 1.0秒 → **0秒**（逐次・同時接続1 は維持）。
+#   1.0秒は藤沢（340枚・6分）で決めた値を、全国（標高タイル 約57万枚）へ見直さずに
+#   持ち込んでいた（公式の根拠は無い）。参考にした一次情報:
+#     - 国土地理院の公式ダウンロードツール tdlmn は **8本並列・待ちなし**
+#       （https://github.com/gsi-cyberjapan/tdlmn 、src/tdlmn.rb の $N_DOWNLOAD_THREADS = 8。2026-09-26 確認）
+#       ★★ただしタイルの取得先は **maps.gsi.go.jp/xyz** で、こちらが叩く cyberjapandata.gsi.go.jp
+#         とは**別のホスト**（src/tdlmn.rb の $BASE_URL。6回目のレビューで指摘・2026-09-27 確認）。
+#         README は負荷を避けるため -diff（MD5 比較）での利用を求めている。
+#         → cyberjapandata への許容度の直接の根拠にはならない。参考情報にとどまる
+#     - cyberjapandata.gsi.go.jp は CloudFront 経由（PMTiles の HEAD で確認）
+#   実績（2026-09-26〜27、待ち 0秒・直列で全国 51地域）: 503 が **2回**（岡山・大分で各1回。
+#   どちらもやり直し1回目で取得できた）。429 は 0回。
+#   → 待ちは無くすが、**並列にはしない**（絶対ルール3）。429/503 を受けたら
+#     Retry-After に従い、その実行の残りは sleep_after_throttle_sec に戻す（kansui.fetcher）。
+# -----------------------------------------------------------------------------
+tiles:
+  sleep_sec: 0.0                 # 逐次・待ちなし（2026-09-26 に 1.0 から変更）
+  sleep_after_throttle_sec: 1.0  # ★429/503 を一度でも受けたら、以後はこの間隔に戻す
+  max_retry_after_sec: 900       # Retry-After の上限（異常に長い値で止まり続けない）
+  # ★429/503 を受けた記録（cache_dir/.throttled）をこの秒数のあいだ覚えておき、後から始まる
+  #   プロセス（連鎖の次の地域・やり直し）も減速した間隔で始める。印を消せば 0秒に戻る
+  throttle_memory_sec: 86400
+  max_concurrency: 1             # 同時接続1
+  user_agent: "kansui-national-poc/0.1 (nationwide flood-risk routing PoC; +https://github.com/uchidakoichi/kansui-national)"
+  cache_dir: data/cache/xyz      # ★同じタイルを二度取らない
+  timeout_sec: 60
+  max_retries: 3
+  retry_backoff_sec: 2.0
+  cache_negative: true           # ★404 も記録する。不存在の再問い合わせを防ぐ
+
+# -----------------------------------------------------------------------------
+# gsi_vector ── 国土地理院 最適化ベクトルタイル
+#
+# ★**試験公開である。** 国土地理院が「URL やデータ構成、データの内容
+#   （属性の有無や名称等）が変わる可能性があります」と明記している。
+#   実際、令和4年11月25日に vt_rnkwidth の属性名・属性値が修正された実績がある。
+# -----------------------------------------------------------------------------
+gsi_vector:
+  url: "https://cyberjapandata.gsi.go.jp/xyz/optimal_bvmap-v1/{z}/{x}/{y}.pbf"
+  # ★★どこから読むか（2026-09-25 切り替え）。"pmtiles" | "xyz"
+  #   XYZ 版（上の url）は **2023年10月1日時点で更新停止**、2023年度末までに公開停止の予定と
+  #   国土地理院が明記している。PMTiles 版は3か月ごとに更新（2026-09-17 に 2026年7月1日時点）。
+  #   出典: https://github.com/gsi-cyberjapan/optimal_bvmap （2026-09-25 確認）
+  #   → 全国ファイルを**1回の取得**で手元に置き、そこから読む（通信しない）。
+  #     XYZ を1枚ずつ取ると全国で約170万回・1枚1秒の待ちで約20日かかっていた。
+  #   ★ファイルが無ければ止まる。黙って XYZ（古いデータ）へ戻らない。
+  source: pmtiles
+  pmtiles_url: "https://cyberjapandata.gsi.go.jp/xyz/optimal_bvmap-v1/optimal_bvmap-v1.pmtiles"
+  pmtiles_path: data/cache/pmtiles/optimal_bvmap-v1.pmtiles
+  zoom: 16                       # 最大。★低ズームを取っても詳細は上がらない
+  road_layer: "RdCL"
+  rail_layers: ["RailCL", "RailTrCL"]
+
+  # 幅員区分を使うか。★P-4（2026-09-20）の実測で採用を決めた:
+  #   無作為な2本の大小一致 93.7%（OSM 道路種別は 85.9%）／Spearman 0.741 vs 0.694
+  #   区分内のばらつきも小さい（「19.5m以上」IQR 0.87m vs OSM primary 10.07m）
+  use_rnkwidth: true
+
+  # ★`vt_width` は使わない。仕様書が「地図表示用の仮想的な幅員」と明記しており
+  #   実測値ではない。**true にしないこと。**
+  use_vt_width: false
+
+# -----------------------------------------------------------------------------
+# width ── 道路幅
+#
+# ★NK-18 決定（2026-09-20・利用者判断）: **(c) 経路計算は区分に統一、
+#   PLATEAU の実測値は表示だけに使う。**
+#
+#   理由: PLATEAU 実測（道路区域幅・歩道込み）と地理院の区分は**系統的にずれる**
+#   （実測のほうが広い 47.2% / 狭い 1.2%）。混ぜると**市境をまたいだ瞬間に
+#   `μ·narrow(e)` の効き方が変わり、不自然な迂回が出る。**
+#   経路の選好では精度より**一様さ**が効く。
+# -----------------------------------------------------------------------------
+width:
+  routing_source: "gsi_rnkwidth"   # ★経路計算はこれ一本。全国で一様
+  display_source: "plateau"        # 表示のみ。PLATEAU のある都市だけ値が入る
+
+  # ★**絶対値の閾値に区分を当ててはいけない。**
+  #   「3m未満」とされた道の PLATEAU 実測中央値は 3.94m（藤沢・n=1,085）。
+  #   4m の線を引くと大量に取りこぼす。
+  #   藤沢版の routing.width_narrow_at_m = 4.0（建築基準法42条2項道路の境）は
+  #   **区分では再現できない。** K-10（消防車の最低幅）も同じ理由で答えられない。
+  absolute_threshold_m: null       # TODO: 使わない方針。使うなら実測幅員が要る
+
+# -----------------------------------------------------------------------------
+# boundary ── 行政区域（国土数値情報 N03）
+# -----------------------------------------------------------------------------
+boundary:
+  # 国土数値情報 行政区域データ N03（2026年/令和8年版）
+  #   ライセンス: オープンデータ（CC BY 4.0）
+  #   ★2026-09-20 に一次情報で確認: 全国一括 `N03-20260101_GML.zip` は **766.0MB**、
+  #     都道府県別は神奈川県で **5.1MB**。
+  #     → **都道府県別を使う。** 1地域ずつ流す設計に対して全国一括は無駄が大きい
+  url_template: "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2026/N03-20260101_{pref}_GML.zip"
+  cache_dir: data/raw/n03
+
+  # ★緯度経度を書かない。bbox はデータから導出する（藤沢版から継承）
+  area_check_tolerance: 0.01       # ±1%
+
+  # 面積の検算に使う公式値［km²］。★**公式に確認できたものだけ**置く。
+  #   藤沢市 69.56 は藤沢版で確認済み（同じ値で回帰検知になる）。
+  #   ★神奈川県全体の公式面積は未確認なので置かない（絶対ルール10）。
+  #     県の値が要るなら「全国都道府県市区町村別面積調」（国土地理院）に当たること
+  official_area_km2:
+    "14205": 69.56                 # 藤沢市。★全国版でも同じ数字が出ることを確かめる
+
+# -----------------------------------------------------------------------------
+# osm ── 道路網（OpenStreetMap）
+#
+# ★決定は藤沢版から継承: pyrosm（ローカルPBF）。Overpass は使わない。
+#   OSM Wiki の Overpass「Limitations」が「リージョン全体を取りたい場合は
+#   planet.osm ミラーを使うべき」と明記しているため。
+#
+# ★**一方通行と道路名は OSM にしか無い。** 国土地理院ベクトルタイルには入っていない
+#   （2026-09-19 調査）。道路網そのものは OSM が要る。
+#
+# ★ODbL 1.0。配布するグラフが Derivative Database に当たりうる（NK-11）。
+# -----------------------------------------------------------------------------
+osm:
+  # ★地域ごとに使う抽出。全国一括（japan-latest 2.4GB）より地方別のほうが軽い。
+  #   ★Phase 1（神奈川県）は関東で足りる。藤沢版が既に持っているものを流用する
+  extracts:
+    kanto:
+      url: "https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf"
+      path: data/external/kanto-latest.osm.pbf
+    # ★関東以外は**日付入り**で取る（2026-09-22 版。tools/fetch_osm_extracts.sh）。
+    #   -latest は中身が日々変わり、作り直しで再現できない。
+    #   ★関東だけ 2026-08-25 の -latest（藤沢版から流用）。地方の境目でノードの座標が
+    #     食い違いうるので、書き出し（export_national.py）で揃える。
+    hokkaido:
+      url: "https://download.geofabrik.de/asia/japan/hokkaido-260922.osm.pbf"
+      path: data/external/hokkaido-260922.osm.pbf
+    tohoku:
+      url: "https://download.geofabrik.de/asia/japan/tohoku-260922.osm.pbf"
+      path: data/external/tohoku-260922.osm.pbf
+    chubu:
+      url: "https://download.geofabrik.de/asia/japan/chubu-260922.osm.pbf"
+      path: data/external/chubu-260922.osm.pbf
+    kansai:
+      url: "https://download.geofabrik.de/asia/japan/kansai-260922.osm.pbf"
+      path: data/external/kansai-260922.osm.pbf
+    chugoku:
+      url: "https://download.geofabrik.de/asia/japan/chugoku-260922.osm.pbf"
+      path: data/external/chugoku-260922.osm.pbf
+    shikoku:
+      url: "https://download.geofabrik.de/asia/japan/shikoku-260922.osm.pbf"
+      path: data/external/shikoku-260922.osm.pbf
+    kyushu:
+      url: "https://download.geofabrik.de/asia/japan/kyushu-260922.osm.pbf"
+      path: data/external/kyushu-260922.osm.pbf
+  license: "ODbL 1.0 / © OpenStreetMap contributors"
+
+  # 地域名 → 使う抽出。★TODO: 地方の割り当ては必要になった地域だけ書く
+  extract_for_region:
+    kanagawa: kanto
+    tokyo_kanagawa: kanto   # ★Geofabrik の kanto は東京都を含む（島しょ部は region 側で外す）
+    saitama: kanto
+    chiba: kanto
+    ibaraki: kanto
+    tochigi: kanto
+    gunma: kanto
+
+  network_type: driving
+  exclude_highway_values:
+    [abandoned, bridleway, bus_guideway, construction, corridor, cycleway, elevator,
+     escalator, footway, "no", path, pedestrian, planned, platform, proposed, raceway,
+     razed, rest_area, service, services, steps, track, busway]  # busway = BRT・バス専用道（2026-09-24）
+  # ★自動車が通れない区間（書き出しで落とす）。OSM の通行規制の階層どおり、具体的なものを優先して
+  #   motorcar → motor_vehicle → access の順に最初に値のあるものを見る（2026-09-24 のレビュー）。
+  #   pyrosm の driving は access=private しか落とさず、access=no（閉鎖された林道など）が
+  #   経路網に入っていた。実例: 秩父の 林道西秩父線（access=no・12.1km）を通る経路が出た。
+  #   実測: 東京・神奈川 1,627本 / 埼玉 9,018本 / 千葉 554本。
+  exclude_vehicle_access_values:
+    # ★★全部に引用符を付ける。`no` は YAML 1.1 で**真偽値 False** になる（T-16 と同じ罠）。
+    #   2026-09-24、引用符なしで書いて access=no が1本も落ちていなかった（埼玉 9,018本 → 61本）。
+    ["no", "private", "agricultural", "forestry", "agricultural;forestry", "forestry;agricultural"]
+  exclude_service_values:
+    [alley, driveway, emergency_access, parking, parking_aisle, private]
+
+  # ★保持タグ。**layer を必ず含めること。**
+  #   osmnx の settings.useful_tags_way 既定にも pyrosm の highway_columns 既定にも
+  #   layer が入っていない。T-01 対策の要なので、落とすと**静かに機能しなくなる**。
+  extra_attributes: [layer, covered, maxheight]
+
+  # 通過時間 = 長さ / 速度。★藤沢市域で maxspeed を持つ way は 5.27% しかなかった。
+  #   つまり cost(e) の第1項は実質**既定速度の与え方**が決めている。
+  #   OSM Wiki のルーティング向け既定値表（日本）に基づく
+  # ★maxspeed の有効範囲［km/h］。外れた値は**誤記とみなして道路種別の既定速度へ回す**（件数はログに出す）。
+  #   ★上限: 全国の地方別 PBF 7本（2026-09-22 版）を走査して、120 を超えるのは
+  #     北海道の maxspeed=560（道道 砂川奈井江美唄線・5 way。隣の way は 50/60）だけだった
+  #     （2026-09-24 のレビュー）。これが1件でも入ると、全国共通の最高速度（A* の見積もりの分母）が
+  #     4.7倍になり、全国すべての経路で探索が 38〜102% 増える。
+  #   ★下限: maxspeed=1 などの小さな誤記が東北・関西に実在する。徐行の 10 は残す。
+  # ★F-03 標高プロファイルで**両端を結ぶ**トンネルの tunnel=* の値（2026-09-29・利用者判断）。
+  #   標高タイルは地表（トンネルの上の山）を測るので、そのまま描くと実在しない山が出る
+  #   （札幌→旭川で 478m まで跳ねた）。★avalanche_protector（雪崩よけの覆い）・building_passage・
+  #   culvert は地表の道なので入れない（実データの値: yes 2,550 / avalanche_protector 345 ほか。北海道12系）
+  profile_tunnel_values: ["yes"]
+  maxspeed_valid_kmh: [5, 120]
+  default_speed_kmh:
+    motorway: 100
+    _other: 60                   # 日本は高速道路以外すべて60km/h と記載されている
+
+# -----------------------------------------------------------------------------
+# dem ── 標高
+#
+# ★案B（実行時にブラウザが標高タイルを取る）は 2026-09-20 に**実測で棄却した。**
+#   経路探索は「探索で確定したノード全部」のリスクを要るので、
+#   1経路あたり 5.7〜14.6MB の標高タイルが必要になる
+#   （藤沢市域+3km をまるごと覆う DEM5A が 21.6MB しかない）。
+#   → **Δh は前処理で計算してグラフに載せる。** 1バイト/エッジで済む。
+#   詳細は docs/StepN2_設計_地域ごとの段階導入.md §1
+# -----------------------------------------------------------------------------
+dem:
+  # ★★取得経路は**地理院タイル**（NK-05 決定 2026-09-21）。
+  #   NK-19 の回答で判断軸が消えた: 標高タイルも基盤地図情報も
+  #   **どちらも「基本測量成果」で測量法30条の承認が要る**。
+  #   → ライセンス面で差が無くなり、残るのは取得の手間だけ。
+  #     タイル      … 自動で取れる。地域ごとに流せる
+  #     基盤地図情報 … ログインが要る。利用者ご本人の手作業になる
+  #   ★しかも承認申請はタイル（dem5a_png 等）で出した。
+  #
+  # ★標高 API（getelevation.php）は使用禁止（絶対ルール2）。前処理・実行時とも
+  sources:                         # フォールバック順（藤沢版から継承）
+    - {name: dem1a, zoom: 17, sd_m: 0.3, url: "https://cyberjapandata.gsi.go.jp/xyz/dem1a_png/{z}/{x}/{y}.png"}
+    - {name: dem5a, zoom: 15, sd_m: 0.3, url: "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png"}
+    - {name: dem5b, zoom: 15, sd_m: 0.7, url: "https://cyberjapandata.gsi.go.jp/xyz/dem5b_png/{z}/{x}/{y}.png"}
+    - {name: dem5c, zoom: 15, sd_m: 1.4, url: "https://cyberjapandata.gsi.go.jp/xyz/dem5c_png/{z}/{x}/{y}.png"}
+    - {name: dem10b, zoom: 14, sd_m: 5.0, url: "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png"}
+
+  # 主系列。★藤沢では DEM1A は14倍のコストに対し Δh の差が 0.15% だったので不採用
+  primary: dem5a
+
+  # ★T-07: DEM10B は Δh の分解能が不足する（等高線由来の 10m メッシュ・SD 5.0m）。
+  # ★★NK-07 決定 2026-09-28（利用者判断「ないよりはまし」）: **使う。**
+  #   実測で DEM5A〜5C が無く判定不能になる道路が全国 2.80%（奄美 81.68%・北海道11系 22.57% ほか）。
+  #   ★DEM10B で推定した区間は**区別して明示する**（配布データの edgeDemLow・画面の文言。T-11）。
+  #   ★標高プロファイルにも使い、破線で区別する（nodeElevLow）
+  exclude_dem10b: false
+
+  # ★★2026-09-30（利用者判断）: DEM5 が一部あるタイルでも、**水域の外の欠損が大きければ** DEM10B で埋める。
+  #   水域は手元の PMTiles（gsi_vector.pmtiles_path）の WA（水域）。水域の画素は埋めない。
+  #   閾値はタイル（z15・256×256）に占める「水域の外の欠損」の割合。★自主基準（公式の根拠は無い）。
+  #   実測（各地域800枚）: 10% を超えるタイルは 関東 0.6% / 秋田 28.7% / 道北 58.9%。
+  #   関東の川原の欠損は p99 でもタイルの 2.9% で、未整備の陸地（数十%〜全域）と分かれる。
+  water_mask: true
+  land_hole_min_frac: 0.10
+
+  # ★★取るのは**道路から Δh の最大半径＋この余裕の範囲に重なるタイルだけ**（2026-09-26）。
+  #   区画の枠を丸ごと取っていたが、Δh が参照するのは各サンプル点から半径 r の円だけ
+  #   （kansui.terrain.compute_delta_h）。山林・海の上のタイルは一度も使われなかった
+  #   （山梨・静岡で枠の 42〜47%）。ラスタの枠と格子は変えない（取らないタイルは欠損のまま）。
+  #   余裕は、再投影（双線形）とサンプル点の画素への丸めのぶん。★結果が変わらないことを
+  #   既存の地域の作り直しで確かめてから入れた（S_topo が全エッジで一致）。
+  fetch_margin_m: 50
+
+  # ★TODO: 全国の DEM5A 被覆率（NK-07）。P-1 で地域ごとに実測して埋める
+  coverage_dem5a: null
+
+  # ★★**標高値そのものを配布物に入れない**（NK-20 決定 2026-09-21）。
+  #   測量法第30条の使用承認について、国土地理院が申請フォームで
+  #   「**簡便な方法により国土地理院の測量成果を復元できる場合は、
+  #     承認することは出来ません**」と明示している。
+  #
+  #   藤沢版は `graph.bin` に `nodeElev`（0.1m 単位の Int16・ノード16万点）を
+  #   持ち、`graph.json` に offset・型・長さを公開していたため
+  #   **Int16Array として読めば標高値がそのまま取り出せた。**
+  #   → 2026-09-21 に配布物から外し、F-03（ルート標高プロファイル）を取り下げた。
+  #
+  #   配布してよいのは `edgeScore`（S_topo を 0〜254 に量子化したもの）まで。
+  #   S_topo は「近傍最小標高との差」を2半径の幾何平均で取り255段階へ量子化した
+  #   ものなので、**絶対標高には戻せない。**
+  #   ★**true にしないこと。復活させるなら承認を取り直すこと。**
+  # ★★2026-09-24 解除（NK-19 再解決: 標高タイルは申請不要・出典の明示で利用可）。以上は経緯。
+  #   形式 6 から nodeElev（0.1m・Int16）、形式 8 から nodeElevLow を配っている。
+  #   ★この値はどのコードも読んでいない（7回目のレビューで判明）。誤解を招くので実態に合わせて true にする
+  distribute_node_elevation: true
+
+# -----------------------------------------------------------------------------
+# risk ── リスクスコア（★藤沢の実測で決めた値。他地域での妥当性は未検証）
+# -----------------------------------------------------------------------------
+risk:
+  delta_h:
+    radii_m: [100, 250]            # ★実距離。必ずその地域の平面直角座標系で測る（T-05）
+    d_ref_m: 1.0                   # ★S_topo = √Π exp(−Δh_r/d) の d。build_region が読む（2026-09-24 まで直書きだった）
+    sample_interval_m: 20.0        # ★エッジ上の Δh のサンプル間隔［m］。build_region が読む
+    # ★★2026-09-20 訂正。ここに `footprint: octagon` と書いていたのは**誤り**だった。
+    #   藤沢版の実装は**全画素フィルタを使っていない。**
+    #   Δh は**道路のサンプル点でのみ**、点ごとに窓を切り出して
+    #   **正確な円**の最小値を取る（`kansui.terrain.compute_delta_h`）。
+    #   → T-12（円形 minimum_filter が分離可能でなく OOM になる）は**起きない**し、
+    #     八角形近似も要らない。設定項目そのものが不要。
+    #   ★この方式のおかげで、県全域のラスタを一度に舐める必要も無い
+    #     （神奈川県は 4m 格子で 437M画素＝1.75GB になる）。
+    # 「周囲が全方位で高いか」を見る方位の数。★★全国版の S_topo には**効かない**（S_topo は Δh だけで
+    #   作り、囲まれ度 enclosure は使っていない）。ただし Δh のキャッシュの指紋に入っているので、
+    #   **変えると全区画の Δh を作り直すだけになる**。変えないこと（2026-09-24 のレビュー）
+    n_azimuths: 32
+    analysis_resolution_m: 4.0   # 解析格子［m］。z15 の実分解能 3.896m をほぼそのまま
+
+  w1_topo: null                    # TODO: 藤沢版も未確定（正規化で消えるため不要だった）
+  w2_hazard: 0.0                   # ★スコアに入れない。重畳表示のみ（藤沢版の決定を継承）
+  w3_known_halo: null              # TODO: 藤沢版も未確定
+
+  # ★T-04: リンクへの集約は平均ではなく**最悪値**
+  edge_aggregation: max
+
+# -----------------------------------------------------------------------------
+# routing ── 経路探索（★藤沢の実測で決めた値。他地域での妥当性は未検証）
+# -----------------------------------------------------------------------------
+# F-08 経路上の注意地点一覧（藤沢版 `ui.hazard_list` の規則を継承）
+#   ★全国版はノード名（交差点名）を持たないので、地点は「道路名＋出発からの距離」で書く。
+#     遠くの地名を借りない（藤沢版 label_radius_m の筋）のと同じく、**名前を作らない**。
+hazard_list:
+  # 一覧に出す最大件数。★切ったことを隠さない（「ほか N か所」を必ず出す）
+  max_items: 12
+  # 同じ種類の区間をひとまとまりに畳むときに許す途切れ［m］
+  merge_gap_m: 60
+
+# road_kansui ── 道路冠水想定箇所（NK-09）。★2026-10-02 利用者判断
+#   各道路管理者の PDF から位置を起こしたもの（preprocess/tools/nk09_pilot/）。座標付きの公式配布は無い。
+#   確定（confirmed）だけ経路計算に効かせる。要確認（uncertain）は表示だけ。位置不明（unlocated）は一覧だけ
+road_kansui:
+  points_csv: data/manual/road_kansui_points.csv
+  # 確定の点から結び付ける区間までの上限［m］。★自主基準。確定の点は道路から 8m 以内（山梨 16/16 実測）
+  snap_m: 30
+  # 同じ名前の区間（上下線が別の区間の道）も拾う距離［m］。★自主基準
+  same_label_m: 40
+  attribution: "出典：国土交通省 各地方整備局・沖縄総合事務局「道路防災情報Webマップ」（冠水想定箇所）、各道路管理者の公表資料"
+  processing_note: "各地方整備局等の公表データ（道路防災情報Webマップ）と各道路管理者の公表資料をもとに、本アプリが加工して表示しています（関東の一部は資料の地図から本アプリが位置を推定）。国・自治体の公式な情報ではありません"
+
+routing:
+  lambda_default: 8.0              # ★藤沢の実測で 2.0 → 8.0 に変更（2026-09-08）
+  lambda_steps: [0, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64]
+  mu_narrow_default: 0.5           # ★risk と別項にする。混ぜない
+
+  # 迂回の許容比（1経路あたり最速比）。★藤沢版 Step 5 の決定（2026-09-02）を継承。
+  #   超えたら UI に注意を出す。★表示だけで経路計算には影響しない
+  acceptable_time_ratio: 2.0
+
+  # 雨の強さスライダの校正点。★**藤沢市の想定図の面積に合わせた値**であり、
+  #   他地域でそのまま使えるかは分からない（NK-10）
+  calibrated_depth_m: 1.407
+  calibrated_threshold: 0.2449     # = exp(-1.407)
+
+  # ★アンダーパスは採点せず**判定不能**。4段階に入れない（藤沢版の決定を継承）
+  # ★★true しか実装していない（build_region は検出した立体交差をすべて判定不能にする）。
+  #   false にすると build_region が止まる（黙って効かない設定にしない。2026-09-24 のレビュー）
+  exclude_flat_grade_separation: true
+
+  # ★★A* を使う（NK-06 決定 2026-09-20）。藤沢版の router.worker.ts は素の Dijkstra。
+  #   市域+3km ならグラフ全体がメモリに載るので困らなかったが、全国版は
+  #   「経路に要る区画だけ読む」ので**探索の広さがそのまま通信量になる**。
+  #   ヒューリスティックは「目的地までの直線距離 ÷ 最高速度（motorway 100km/h）」。
+  #   どの辺もこれより速くないので**許容的**＝最短経路は変わらない。
+  #   ★測定で全標本の経路コストが Dijkstra と一致することを確認済み。
+  #   実測の削減: 確定ノード −49%〜−62% / 区画はおよそ半分
+  # ★クライアントは index.json の useAstar を見る。false なら見積もり 0（＝ Dijkstra）で探索する
+  use_astar: true
+
+  # ★★経路探索の上限距離［km］（NK-06 決定 2026-09-20・利用者判断）
+  #   **40km。実測した範囲の上限そのもの。**
+  #   根拠: P-7 で測った距離帯は 2-5 / 5-15 / 15-40km。40km を超える距離は**測っていない**。
+  #   → 「**測っていない範囲は約束しない**」という筋を通す。
+  #   超えたら「この距離は対象外です」と明示して断る。★黙って遅くしない。
+  max_route_distance_km: 40.0
+
+  # ★★40km を超える経路（NK-10 決定 2026-09-28・利用者判断「読む量で上限を決める」）
+  #   北海道など道路の疎らな地域では、直線 100km を超えても読む量は都市部の 40km より少ない
+  #   （実測: 札幌→旭川 112km で通信 2.2MB・確定 38万ノード。東京→宇都宮 98km は 46.8MB・196万）。
+  #   → **40km までは今までどおり必ず受け付け**、それを超えるときは次の2つを両方満たせば受け付ける:
+  long_route:
+    # ★直線距離の絶対の上限［km］。**実測した最長**（札幌→旭川 直線 112km）。測っていない距離は約束しない
+    max_km: 112.0
+    # ★起終点を囲む長方形（＋余裕）に重なる区画の配信サイズ（gzip）の合計［MB］の上限。
+    #   **東京都心から 40km の8方向で測った最大値**（16.7MB）。密な地域の 40km と同じ重さまで、という意味
+    max_load_mb: 16.7
+    margin_km: 2.0
+
+  # ★★性能要件（NK-06 決定 2026-09-21・利用者判断「距離帯ごとに分けて書く」）
+  #
+  # ★**「探索そのもの」だけを要件にする。** 区画の取得・展開は回線しだいなので
+  #   約束できない（実測: 35km で取得 2.76秒＝LAN 約30Mbps。携帯回線ではもっとかかる）。
+  #   取得を含む合計は「記録する値」であって「約束する値」ではない。
+  #
+  # ★判定は **p90**。max は標本の引き方で大きく動くため基準にしない。
+  #   実測（4通りの種・各帯25本）: p90 の幅は 0.1〜0.3秒に対し、
+  #   max は帯によって **1.36〜2.2倍**動いた。
+  #   （藤沢版 Step 5 でも「p90 は安定・max は 1.8倍動く」と実証済み）
+  #
+  # ★値の出し方: **確定ノード数は端末に依らない**ので帯ごとに多数測り
+  #   （`preprocess/tools/pick_probe_points.py` ＋ `web/tools/band_probe.mjs`）、
+  #   **実機で測った 1ノードあたりの時間**（5.31µs。21km と 35km の2本）を掛けた。
+  #   ★掛け算で出した値なので、**実機で直接測り直すこと**。
+  #
+  # ★**値の決め方（規則を明示する。その場の感覚で余裕を決めない）**:
+  #     「4種の種で測った p90 の**最悪値**」× **1.5** を、0.5秒単位に切り上げ。
+  #   1.5倍の根拠: 同じ帯でも種によって p90 が 1.2〜1.4倍動いたため、
+  #   標本の引き直しで外れない幅を取る。
+  #
+  #   実測（1ノードあたり 5.62µs で換算）と、置いた要件:
+  #     帯        中央値   p90(最悪)   ×1.5    要件    p90 の振れ
+  #     〜 5km    0.09秒    0.15秒     0.22 →  0.5秒    1.10倍
+  #     〜15km    0.50秒    0.96秒     1.43 →  1.5秒    1.21倍
+  #     〜25km    1.59秒    2.97秒     4.45 →  4.5秒    1.59倍
+  #     〜40km    2.58秒    4.03秒     6.05 →  6.5秒    1.24倍
+  #   ★2026-09-21、**道路グラフを設計どおり（+3km）に切り直したあと**に測り直した値。
+  #     切り直す前はグラフが 21% 大きく、確定ノードもそのぶん多かった。
+  #
+  #   ★**実機で直接測った2本は、いずれも要件の内側**（2026-09-21・修正後）:
+  #     21km  確定 183,893 → 探索 **1.11秒**（要件 5.0秒）
+  #     35km  確定 398,318 → 探索 **2.07秒**（要件 6.5秒）
+  #   ★要件が実測の3倍ほど緩いのは、帯の標本が**一様無作為な2点**だから。
+  #     実際の移動より極端な組（半島を回る等）が混ざる。
+  #     藤沢版 Step 5 と同じ論点で、**n を増やしても直らない**。
+  #     → 要件は「起こりうる最悪」、中央値が「ふつうに使ったとき」。
+  #
+  #   ★40km は `max_route_distance_km` と同じ。それを超える距離は断る。
+  performance_target:
+    metric: search_ms_p90     # ★探索そのものの p90［ms］。取得・展開は含まない
+    bands:
+      - { up_to_km: 5.0,  ms: 500 }
+      - { up_to_km: 15.0, ms: 1500 }
+      - { up_to_km: 25.0, ms: 4500 }
+      - { up_to_km: 40.0, ms: 6500 }
+    # ★参考（要件ではない）。ふつうに使ったときの目安＝帯の中央値
+    typical_ms: [90, 500, 1600, 2600]
+    # ★参考値（要件ではない）。回線しだいなので約束しない
+    measured_transfer_note: "35km で取得 0.71秒（LAN・区画19枚 8.96MB。★途中で読んだのは2回だけ）"
+
+# -----------------------------------------------------------------------------
+# hazard ── 重畳表示（★スコアには入れない）
+# -----------------------------------------------------------------------------
+hazard:
+  layers: ["flood_l2", "hightide"] # ★内水は一部市町村のみ（T-03）。地域ごとに判定
+  # ★TODO: 全国合成レイヤの有無と凡例（NK-14）。都道府県別のまま使う
+  nationwide_layer: null
+  # ★T-06: 凡例 LUT はレイヤごとに分離する。共通化すると必ず事故る
+  # ★T-02: 無着色＝安全ではない。内水は 0〜0.1m を描画しない
+
+# -----------------------------------------------------------------------------
+# places ── F-01 住所・交差点名の検索（NK-12 決定 2026-09-28・利用者判断: OSM を同梱）
+#
+# ★地理院の住所検索 API は採らない（API の仕様変更のたびに保守が要る。国土地理院も
+#   「主に地理院地図からの利用を想定」「予告なく変更する場合がある」としている
+#   → gsi-cyberjapan/gsimaps issue #29）。位置参照情報も採らない（配布物が大きくなる）。
+# ★藤沢版（kansui.addresses）と同じ作り: OSM の place と、名前の付いた信号交差点。
+#   **番地では探せない。網羅は保証しない**（地域でばらつく。北海道は名前付きの信号が少ない）。
+# ★同名が全国に多い（「本町」等）ので、行政区域（N03）で都道府県名・市区町村名を付けて区別する。
+# -----------------------------------------------------------------------------
+places:
+  # 住所として扱う place の種別（藤沢版と同じ。locality・islet・city 等は住所ではないので採らない）
+  kinds: {neighbourhood: 町丁目, quarter: 大字, suburb: 地区}
+  # 名前の付いた信号（highway=traffic_signals）を「交差点」として入れる
+  signals: true
+  # ★同じ市区町村・同じ名前・同じ種別で、この距離以内のものは1つに畳む［m］。
+  #   大きい交差点は信号ノードが複数ある。place は点と面の両方で入っていることがある。
+  #   ★地方の PBF は境で重なるので、同じものが2回入る。これも畳む
+  #   ★place は 200m（点と面の二重・PBF の重なりを畳む範囲）。1000m にしていたら、別々の同名の
+  #     場所をまとめて**どちらでもない中間点**を作っていた（7回目のレビュー）
+  merge_m: {交差点: 150, _other: 200}
+  # 検索結果の最大件数（藤沢版の ui.address_search.max_results と同じ値）
+  max_results: 8
+  out: ../web/public/data/places.json
