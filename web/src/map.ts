@@ -25,11 +25,12 @@ const GSI_TILE_SIZE = 256;
 
 /**
  * ★周辺に重ねる線（黄〜赤・判定不能）はズームで太くする（2026-10-11 利用者の指摘「拡大すると細くて見えない」）。
- *   ★z18 でも経路の縁取り（11px）より細く保つ（経路と太さで見分けられるように）
+ * ★★中間のズーム（12〜15）でも細くしない。ここを 2px 未満・不透明度 0.5 にしたら iPhone で見えなくなった（同日）
+ * ★z18 でも経路の縁取り（11px）より細く保つ（経路と太さで見分けられるように）
  */
-const zoomWidth = (z14: number, z16: number, z18: number): ExpressionSpecification =>
-  ["interpolate", ["exponential", 1.5], ["zoom"], 10, z14 * 0.6, 14, z14, 16, z16, 18, z18];
-const OVERLAY_OPACITY: ExpressionSpecification = ["interpolate", ["linear"], ["zoom"], 14, 0.5, 17, 0.75];
+const zoomWidth = (z10: number, z13: number, z16: number, z18: number): ExpressionSpecification =>
+  ["interpolate", ["linear"], ["zoom"], 10, z10, 13, z13, 16, z16, 18, z18];
+const OVERLAY_OPACITY: ExpressionSpecification = ["interpolate", ["linear"], ["zoom"], 10, 0.6, 13, 0.75, 16, 0.8];
 
 /**
  * ★出典表示は常時（絶対ルール7）。編集・加工した旨も規約が求めている。
@@ -171,7 +172,7 @@ function baseStyle(): StyleSpecification {
         type: "line",
         source: "overlay",
         filter: ["==", ["get", "kind"], "unknown"],
-        paint: { "line-color": "#3b4c5a", "line-width": zoomWidth(1.6, 3.5, 6), "line-opacity": OVERLAY_OPACITY },
+        paint: { "line-color": "#3b4c5a", "line-width": zoomWidth(1.6, 2.4, 4, 6), "line-opacity": OVERLAY_OPACITY },
         layout: { "line-cap": "round" },
       },
       {
@@ -180,7 +181,7 @@ function baseStyle(): StyleSpecification {
         source: "overlay",
         filter: ["==", ["get", "kind"], "risk"],
         paint: {
-          "line-width": zoomWidth(2, 4, 7),
+          "line-width": zoomWidth(2, 3, 5, 7),
           "line-opacity": OVERLAY_OPACITY,
           "line-color": ["interpolate", ["linear"], ["get", "risk"], 0.0, "#f6c445", 0.5, "#ef8a2b", 0.8, "#c8341f"] as ExpressionSpecification,
         },
