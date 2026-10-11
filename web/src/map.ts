@@ -70,6 +70,9 @@ export const HAZARD_LAYERS = {
   },
   naisui: {
     url: "https://disaportaldata.gsi.go.jp/raster/02_naisui_data/{z}/{x}/{y}.png",
+    // ★ポータルの z2 タイル（2/3/1）だけ位置が北へ約7°ずれていて、ウラジオストク沖の海に色が付く（2026-10-11 実測。
+    //   z3 以上と他の5種は正しい）→ z2 を取らない（全国表示では内水の面は小さすぎて見えないので失うものは無い）
+    minzoom: 3,
     attribution:
       '内水浸水想定区域: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>（市町村）',
   },
@@ -123,7 +126,7 @@ function baseStyle(): StyleSpecification {
       ...Object.fromEntries(
         Object.entries(HAZARD_LAYERS).map(([k, v]) => [
           k,
-          { type: "raster" as const, tiles: [v.url], tileSize: GSI_TILE_SIZE, minzoom: 2, maxzoom: 17, attribution: v.attribution },
+          { type: "raster" as const, tiles: [v.url], tileSize: GSI_TILE_SIZE, minzoom: "minzoom" in v ? v.minzoom : 2, maxzoom: 17, attribution: v.attribution },
         ]),
       ),
       route: { type: "geojson", data: EMPTY },
