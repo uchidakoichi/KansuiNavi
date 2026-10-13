@@ -37,7 +37,7 @@ for l in open(HERE / "tokyo/llm_rows.tsv"):
     if res is not None and res < 200:
         tier, lon, lat, rad = "confirmed", g["lon"], g["lat"], ""
     elif res is not None and res < 800 and "map_lon" in g:
-        tier, lon, lat, rad = "uncertain", g["map_lon"], g["map_lat"], 400
+        tier, lon, lat, rad = "uncertain", g["map_lon"], g["map_lat"], 1000
     else:
         tier, lon, lat, rad = "unlocated", "", "", ""
     recs.append(dict(id=f"tokyo-{n}", region="tokyo_kanagawa", tier=tier,

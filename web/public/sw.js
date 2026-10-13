@@ -32,7 +32,7 @@
 //   `activate` で古いキャッシュごと消える。区画の中身（レイアウト・旗・
 //   幅員の狭さ）は版で変わるので、混ぜると**黙って古い値で経路を引く。**
 const SHELL_VERSION = "v7"; // アプリ本体（HTML / JS / CSS）
-const DATA_VERSION = "v24"; // data/*（index.json・区画ファイル・places.json）
+const DATA_VERSION = "v25"; // data/*（index.json・区画ファイル・places.json）
 const TILES_VERSION = "v1"; // 地図タイル（実行時に溜まる）
 
 const SHELL = `kansui-n-shell-${SHELL_VERSION}`;

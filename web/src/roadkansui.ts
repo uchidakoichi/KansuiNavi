@@ -41,6 +41,11 @@ function circle(lon: number, lat: number, r: number): Polygon {
 }
 
 /** 押したときの説明。★確定でも「取り違えの可能性」を書く。「安全」とは書かない（ルール5） */
+/** 円の半径の表示（1km 以上は km） */
+function fmtRadius(m: number): string {
+  return m >= 1000 ? `${+(m / 1000).toFixed(1)}km` : `${m}m`;
+}
+
 function describe(it: Item): string {
   // ★位置の出所で書き分ける: 整備局の公表データ（Webマップ）か、資料の地図から本アプリが推定したものか
   const official = it.method.startsWith("整備局の");
@@ -50,7 +55,7 @@ function describe(it: Item): string {
         ? "<b>冠水想定箇所</b>（位置は整備局の公表データ）"
         : "<b>道路冠水注意箇所</b>（位置は推定・2つの手がかりが一致）"
       : it.tier === "uncertain"
-        ? `<b>道路冠水注意箇所（位置は未確認）</b><br>この円（半径 約${it.radiusM}m）のどこかにあると推定しています。経路の計算には使っていません。`
+        ? `<b>道路冠水注意箇所（位置は未確認）</b><br>この円（半径 約${fmtRadius(it.radiusM!)}）のどこかにあると推定しています。経路の計算には使っていません。`
         : "<b>道路冠水注意箇所（位置を決められませんでした）</b>";
   const caveat =
     it.tier === "confirmed"
@@ -102,7 +107,7 @@ export async function loadRoadKansui(map: MLMap, listEl: HTMLElement): Promise<v
       .filter((it) => it.tier === "uncertain")
       .map((it): Feature => ({ type: "Feature", properties: { id: it.id }, geometry: circle(it.lon!, it.lat!, it.radiusM!) })),
   };
-  // ★要確認の円の中心の印。説明を開くのはこの印だけ（円の面を押せるようにすると、半径 400m の中に
+  // ★要確認の円の中心の印。説明を開くのはこの印だけ（円の面を押せるようにすると、半径 400m（いまは 1km）の中に
   //   出発地・目的地を置けなくなっていた。2026-10-08 利用者の指摘）
   const centers: FeatureCollection = {
     type: "FeatureCollection",

@@ -369,7 +369,8 @@ def main(name: str) -> int:
     #   支えられていれば、候補の無い行（構造物でない窪地・交差点付近など）も「印から推した位置」を円で出す
     good = sorted(v[0] for v in res.values() if v[0] < 200 and v[1][2] != "路線")
     anchored = len(good) >= 8
-    rad_u = int(max(400, 2 * float(np.median(good)))) if good else 400
+    # ★円の半径の下限 1km（2026-10-13 利用者判断。400m では利用者の知る箇所が円に入らなかった）。自主基準
+    rad_u = int(max(1000, 2 * float(np.median(good)))) if good else 1000
     recs = []
     for r in rows.itertuples():
         n = r.no
