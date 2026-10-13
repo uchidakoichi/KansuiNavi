@@ -139,6 +139,10 @@ async function boot() {
   wireHazards();
   wireLocate();
   wireSearch();
+  // ホーム画面から開いているときは追加の案内を出さない（navigator.standalone は iOS Safari 独自）
+  const standalone = matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  if (standalone) $("a2hs").hidden = true;
   // ★NK-09: 道路冠水注意箇所（データを配っているときだけ。同意画面の文言は boot の先頭で出している）
   if (rkCount) handles.map.on("load", () => void loadRoadKansui(handles.map, $("rk-list")));
   // F-09 ★地図とデータが出てから登録する（起動の邪魔をしない）

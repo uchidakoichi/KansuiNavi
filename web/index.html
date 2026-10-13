@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="robots" content="noindex, nofollow" />
     <title>冠水回避ルート検索（全国版・実証実験）</title>
+    <!-- ホーム画面に追加（2026-10-13）。アイコンは藤沢版と同じもの -->
+    <meta name="theme-color" content="#14202c" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="stylesheet" href="/node_modules/maplibre-gl/dist/maplibre-gl.css" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
@@ -149,6 +154,30 @@
         <a href="https://github.com/uchidakoichi/KansuiNavi" target="_blank" rel="noopener">GitHub（KansuiNavi）</a>
         で公開しています（MIT ライセンス。データは各出典の利用条件に従います）。不具合の報告や改善の提案は
         <a href="https://github.com/uchidakoichi/KansuiNavi/issues" target="_blank" rel="noopener">Issues</a> へどうぞ。</p>
+
+      <!-- ホーム画面に追加する方法（2026-10-13）。手順は Apple・Google の公式ヘルプに合わせた。
+           ★ホーム画面から開いているときは出さない（main.ts） -->
+      <details class="legend" id="a2hs">
+        <summary>ホーム画面に追加してアプリとして使う</summary>
+        <p>このアプリはホーム画面に追加でき、アイコンから<b>アプリのように</b>開けます（ストアからのインストールは要りません）。</p>
+        <p><b>iPhone（Safari）</b></p>
+        <ol class="note">
+          <li>Safari でこのページを開きます。</li>
+          <li>「…」（ページメニュー）をタップしてから「共有」をタップします（タブのレイアウトが「下」か「上」のときは共有ボタンをタップ）。</li>
+          <li>下へスクロールして「<b>ホーム画面に追加</b>」をタップします（無いときは、一番下の「アクションを編集」から追加できます）。</li>
+          <li>「Webアプリとして開く」をオンにして、「<b>追加</b>」をタップします。</li>
+        </ol>
+        <p><b>Android（Chrome）</b></p>
+        <ol class="note">
+          <li>Chrome でこのページを開きます。</li>
+          <li>アドレスバーの右の「⋮」（その他）をタップします。</li>
+          <li>「<b>インストールしてショートカットを作成</b>」（または「ホーム画面に追加」）を選び、「<b>インストール</b>」をタップします。</li>
+        </ol>
+        <p class="note">★表示される項目名は、OS やブラウザの版によって違うことがあります。
+          詳しくは <a href="https://support.apple.com/ja-jp/guide/iphone/iphea86e5236/ios" target="_blank" rel="noopener">Apple サポート</a>
+          ／ <a href="https://support.google.com/chrome/answer/9658361?hl=ja&amp;co=GENIE.Platform%3DAndroid" target="_blank" rel="noopener">Google Chrome ヘルプ</a> を見てください。
+          ★ホーム画面に追加しても、<b>中身はこのページと同じ</b>です（読んでいない区画へ経路を引くには通信が要ります）。</p>
+      </details>
 
       <details class="legend">
         <summary>この地図について</summary>

@@ -1,0 +1,23 @@
+{
+  "name": "冠水回避ルート検索（全国版・実証実験）",
+  "short_name": "冠水回避ルート",
+  "description": "公開データの地形から推定した道路の冠水リスクと、相対的にリスクの低い経路を表示します。実証実験のため、公式な避難誘導や通行可否の判断には使えません。",
+  "lang": "ja",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e7ecf0",
+  "theme_color": "#14202c",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
